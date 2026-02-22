@@ -6,7 +6,7 @@ const ServantContext = createContext<any>(null)
 export function ServantProvider({ children }: any) {
   const [servants, setServants] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [filtered, setFiltered] = useState<any[]>([])
+  const [filtered, setFiltered] = useState([])
 
 
   useEffect(() => {
@@ -27,6 +27,7 @@ export function ServantProvider({ children }: any) {
   if (loading) {
     return <div>Loading...</div>
   }
+
 
   return (
     <ServantContext.Provider value={{ servants, setServants, filtered, setFiltered }}>

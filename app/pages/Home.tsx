@@ -7,12 +7,15 @@ import { useServants } from "../contexts/HomePageContext";
 
 function Homepage (){
 
-  const {servants} = useServants()
+  const {servants, filtered} = useServants()
+
+
     
     return(
-  <>
-    <DataTable columns={columns} data={servants} />
+   <>
+    <DataTable columns={columns} data={filtered} />
   </>
+  
 )
 }
 
