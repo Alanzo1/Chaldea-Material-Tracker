@@ -8,11 +8,11 @@ export function ServantProvider({ children }: any) {
   const [loading, setLoading] = useState(true)
   const [filtered, setFiltered] = useState([])
 
-
   useEffect(() => {
     const loadServants = async () => {
       try {
         const servantData = await getServantsHomePage()
+        setFiltered(servantData)
         setServants(servantData)
       } catch (err) {
         console.log(err)
