@@ -1,4 +1,3 @@
-"use client"
 const BASE_URL = "https://api.atlasacademy.io"
 
 function capitalizeFirstLetter(val: string) {
@@ -18,6 +17,29 @@ function normalizeSourceName(val?: string) {
 
 function normalizePopupText(val?: string) {
     return String(val ?? "").replace(/\s+/g, " ").trim();
+}
+
+const EXCLUDED_TRAITS = new Set([
+    "servant",
+    "canBeInBattle",
+    "weakToEnumaElish",
+    "standardClassServant",
+    "hominidaeServant",
+    "oneStarServant",
+    "twoStarServant",
+    "threeStarServant",
+    "fourStarServant",
+    "fiveStarServant",
+    "unknown",
+]);
+
+function toTitleCase(val?: string) {
+    return String(val ?? "")
+        .replace(/([a-z])([A-Z])/g, "$1 $2")
+        .split(" ")
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
 }
 
 function getEffectsFromDetail(val?: string) {
@@ -104,6 +126,21 @@ export const getServantsHomePage = async () => {
         .map((servant: any) => {
             const buffSet = new Set<string>()
             const debuffSet = new Set<string>()
+            const traitNames = (servant.traits ?? [])
+                .map((trait: any) => String(trait?.name ?? ""))
+                .filter(Boolean);
+            const alignments = traitNames
+                .filter((trait: string) => trait.startsWith("alignment"))
+                .map((trait: string) => toTitleCase(trait.replace(/^alignment/, "")));
+            const traits = traitNames
+                .filter((trait: string) =>
+                    !trait.startsWith("alignment") &&
+                    !trait.startsWith("class") &&
+                    !trait.startsWith("attribute") &&
+                    !trait.startsWith("gender") &&
+                    !EXCLUDED_TRAITS.has(trait)
+                )
+                .map((trait: string) => toTitleCase(trait));
 
             const allSources = [
                 ...(servant.skills ?? []),
@@ -174,8 +211,6 @@ export const getServantsHomePage = async () => {
                             return;
                         }
 
-                        // Skip wrapper buffs whose label is just the skill's unique name
-                        // only when we could not derive a canonical effect from the buff data.
                         if (sourceName && buffName === sourceName) return;
 
                         if (targetsAlly) buffSet.add(b.name);
@@ -184,9 +219,6 @@ export const getServantsHomePage = async () => {
                 });
             });
 
-            console.log(`[${servant.name}] buffs:`, [...buffSet])
-            console.log(`[${servant.name}] debuffs:`, [...debuffSet])
-        
             return {
                 id: servant.id,
                 name: servant.name,
@@ -195,20 +227,32 @@ export const getServantsHomePage = async () => {
                 portrait: servant.extraAssets.faces.ascension["1"],
                 buffs: [...buffSet],
                 debuffs: [...debuffSet],
+                traits,
+                alignments,
+                stars: `${"★".repeat(servant.rarity)} (${servant.rarity})`,
             }
         })
 }
 
-export const getServantData = async(svt_id : number) => {
-    const response = await fetch(`https://api.atlasacademy.io/nice/NA/svt/${svt_id}`)
-    const data = await response.json()
-        
-    return data.map((servant: any) => ({
+export const getServantData = async (svt_id: number, region = "NA") => {
+    const response = await fetch(`${BASE_URL}/nice/${region}/svt/${svt_id}`, {
+        cache: "no-store",
+    });
+
+    if (!response.ok) {
+        throw new Error("Failed to fetch servant.");
+    }
+    const servant = await response.json();
+
+    return {
         id: servant.id,
         name: servant.name,
         className: servant.className,
         rarity: servant.rarity,
-        portraits: servant.extraAssets.faces.ascension
-        
-    }));
+        portrait:
+            servant.extraAssets?.faces?.ascension?.["1"] ??
+            servant.extraAssets?.faces?.ascension?.[1] ??
+            null,
+        raw: servant,
+    };
 }

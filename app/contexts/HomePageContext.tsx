@@ -10,12 +10,18 @@ export interface ServantFilters {
   classes: string[]
   buffs: string[]
   debuffs: string[]
+  traits: string[]
+  alignments: string[]
+  stars: string[]
 }
 
 const defaultFilters: ServantFilters = {
   classes: [],
   buffs: [],
   debuffs: [],
+  traits: [],
+  alignments: [],
+  stars: [],
 }
 
 function matchesAny(values: string[] = [], selected: string[]) {
@@ -53,8 +59,11 @@ export function ServantProvider({ children }: any) {
 
       const buffMatch = matchesAny(servant.buffs, filters.buffs)
       const debuffMatch = matchesAny(servant.debuffs, filters.debuffs)
+      const traitMatch = matchesAny(servant.traits, filters.traits)
+      const alignmentMatch = matchesAny(servant.alignments, filters.alignments)
+      const starMatch = matchesAny([servant.stars], filters.stars)
 
-      return classMatch && buffMatch && debuffMatch
+      return classMatch && buffMatch && debuffMatch && traitMatch && alignmentMatch && starMatch
     })
 
     setFiltered(nextFiltered)

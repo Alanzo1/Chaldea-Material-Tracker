@@ -13,6 +13,12 @@ export interface Servant {
   portrait: string;
 }
 
+function getStarColorClass(rarity: number) {
+  if (rarity <= 2) return "text-amber-700"
+  if (rarity === 3) return "text-slate-400"
+  return "text-yellow-500"
+}
+
 export const columns: ColumnDef<Servant>[] = [
    {
     accessorKey: "portrait",
@@ -39,7 +45,11 @@ export const columns: ColumnDef<Servant>[] = [
         header: () => <div className="text-center">Rarity</div>,
         cell: ({ row }) => {
             const rarity = row.getValue("rarity") as number
-            return <div className="text-center">{"★".repeat(rarity)}</div>
+            return (
+              <div className={`text-center ${getStarColorClass(rarity)}`}>
+                {"★".repeat(rarity)}
+              </div>
+            )
         }
     }
 

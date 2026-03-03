@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 
 import { useServants } from "@/app/contexts/HomePageContext"
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
-type FilterKey = "classes" | "buffs" | "debuffs"
+type FilterKey = "classes" | "buffs" | "debuffs" | "traits" | "alignments" | "stars"
 
 function formatLabel(value: string) {
   return value
@@ -72,25 +72,73 @@ export function NavBar() {
   const router = useRouter()
   const { servants, filters, setFilters } = useServants()
 
-  const classOptions = Array.from(
-    new Set(servants.map((servant: any) => String(servant.className).toLowerCase()))
-  ).sort()
+  const classOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(servants.map((servant: any) => String(servant.className).toLowerCase()))
+      ).sort(),
+    [servants]
+  )
 
-  const buffOptions = Array.from(
-    new Set(
-      servants.flatMap((servant: any) =>
-        (servant.buffs ?? []).map((buff: string) => String(buff))
-      )
-    )
-  ).sort()
+  const buffOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          servants.flatMap((servant: any) =>
+            (servant.buffs ?? []).map((buff: string) => String(buff))
+          )
+        )
+      ).sort(),
+    [servants]
+  )
 
-  const debuffOptions = Array.from(
-    new Set(
-      servants.flatMap((servant: any) =>
-        (servant.debuffs ?? []).map((debuff: string) => String(debuff))
-      )
-    )
-  ).sort()
+  const debuffOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          servants.flatMap((servant: any) =>
+            (servant.debuffs ?? []).map((debuff: string) => String(debuff))
+          )
+        )
+      ).sort(),
+    [servants]
+  )
+
+  const traitOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          servants.flatMap((servant: any) =>
+            (servant.traits ?? []).map((trait: string) => String(trait))
+          )
+        )
+      ).sort(),
+    [servants]
+  )
+
+  const alignmentOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          servants.flatMap((servant: any) =>
+            (servant.alignments ?? []).map((alignment: string) => String(alignment))
+          )
+        )
+      ).sort(),
+    [servants]
+  )
+
+  const starOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(servants.map((servant: any) => String(servant.stars)))
+      ).sort(
+        (left, right) =>
+          Number(right.match(/\((\d+)\)/)?.[1] ?? 0) -
+          Number(left.match(/\((\d+)\)/)?.[1] ?? 0)
+      ),
+    [servants]
+  )
 
   const activeFilters = [
     ...filters.classes.map((value: string) => ({
@@ -108,6 +156,21 @@ export function NavBar() {
       value,
       label: `Debuff Effect: ${value}`,
     })),
+    ...filters.traits.map((value: string) => ({
+      key: "traits" as FilterKey,
+      value,
+      label: `Trait: ${value}`,
+    })),
+    ...filters.alignments.map((value: string) => ({
+      key: "alignments" as FilterKey,
+      value,
+      label: `Alignment: ${value}`,
+    })),
+    ...filters.stars.map((value: string) => ({
+      key: "stars" as FilterKey,
+      value,
+      label: `Stars: ${value}`,
+    })),
   ]
 
   const handleToggle = (key: FilterKey, value: string, checked: boolean) => {
@@ -124,6 +187,9 @@ export function NavBar() {
       classes: [],
       buffs: [],
       debuffs: [],
+      traits: [],
+      alignments: [],
+      stars: [],
     })
   }
 
@@ -135,8 +201,8 @@ export function NavBar() {
         <PopoverTrigger asChild>
           <Button variant="outline">Advanced Filter</Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[min(92vw,72rem)] space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
+        <PopoverContent className="w-[min(96vw,96rem)] space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
             <FilterSection
               title="Classes"
               options={classOptions}
@@ -155,6 +221,24 @@ export function NavBar() {
               options={debuffOptions}
               selected={filters.debuffs}
               onToggle={(value, checked) => handleToggle("debuffs", value, checked)}
+            />
+            <FilterSection
+              title="Traits"
+              options={traitOptions}
+              selected={filters.traits}
+              onToggle={(value, checked) => handleToggle("traits", value, checked)}
+            />
+            <FilterSection
+              title="Alignments"
+              options={alignmentOptions}
+              selected={filters.alignments}
+              onToggle={(value, checked) => handleToggle("alignments", value, checked)}
+            />
+            <FilterSection
+              title="Stars"
+              options={starOptions}
+              selected={filters.stars}
+              onToggle={(value, checked) => handleToggle("stars", value, checked)}
             />
           </div>
           <div className="space-y-2">
