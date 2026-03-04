@@ -39,32 +39,32 @@ export function SkillCard({
   const hasTable = rows.length > 0 && levels.length > 0
 
   return (
-    <Card>
-      <CardHeader className="grid grid-cols-[auto,1fr] gap-4">
+    <Card className="gap-4 py-4">
+      <CardHeader className="grid grid-cols-[auto,1fr] gap-3 px-4">
         {icon ? (
           <Image
             src={icon}
             alt={title}
-            width={48}
-            height={48}
+            width={40}
+            height={40}
             className="rounded-md"
           />
         ) : (
-          <div className="h-12 w-12 rounded-md border bg-muted" />
+          <div className="h-10 w-10 rounded-md border bg-muted" />
         )}
-        <div className="space-y-2">
-          <CardTitle className="text-base leading-tight">{title}</CardTitle>
-          <CardDescription className="text-sm">{description}</CardDescription>
+        <div className="space-y-1.5">
+          <CardTitle className="text-sm leading-tight">{title}</CardTitle>
+          <CardDescription className="text-xs">{description}</CardDescription>
           <p className="text-xs font-medium text-muted-foreground">{unlockText}</p>
         </div>
       </CardHeader>
       {hasTable ? (
-        <CardContent>
+        <CardContent className="px-4">
           <details className="rounded-md border">
-            <summary className="cursor-pointer px-4 py-3 text-sm font-medium">
+            <summary className="cursor-pointer px-3 py-2 text-xs font-medium">
               Per-level values
             </summary>
-            <div className="px-4 pb-4">
+            <div className="px-3 pb-3">
               <SkillInfoTable levels={levels} rows={rows} />
             </div>
           </details>

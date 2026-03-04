@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache"
+
 const BASE_URL = "https://api.atlasacademy.io"
 
 function capitalizeFirstLetter(val: string) {
@@ -110,15 +112,7 @@ function getCanonicalBuffEffects(buff: any, func: any) {
     return [];
 }
 
-export const getServantsHomePage = async () => {
-    const response = await fetch('https://api.atlasacademy.io/export/NA/nice_servant.json');
-    
-    if (!response.ok) {
-        throw new Error("Failed to fetch servants.")
-    }
-
-    const data = await response.json()
-    
+function transformServantsForHomePage(data: any[]) {
     return data
         .filter((servant: any) => {
             return servant.extraAssets?.faces?.ascension?.["1"];
@@ -223,6 +217,7 @@ export const getServantsHomePage = async () => {
                 id: servant.id,
                 name: servant.name,
                 className: capitalizeFirstLetter(servant.className),
+                attribute: toTitleCase(servant.attribute),
                 rarity: servant.rarity,
                 portrait: servant.extraAssets.faces.ascension["1"],
                 buffs: [...buffSet],
@@ -233,6 +228,27 @@ export const getServantsHomePage = async () => {
             }
         })
 }
+
+export const getServantsHomePageIndex = unstable_cache(
+    async (region = "NA") => {
+        const response = await fetch(`${BASE_URL}/export/${region}/nice_servant.json`, {
+            next: {
+                revalidate: 3600,
+            },
+        })
+
+        if (!response.ok) {
+            throw new Error("Failed to fetch servants.")
+        }
+
+        const data = await response.json()
+        return transformServantsForHomePage(data)
+    },
+    ["servants-homepage-index"],
+    {
+        revalidate: 3600,
+    }
+)
 
 export const getServantData = async (svt_id: number, region = "NA") => {
     const response = await fetch(`${BASE_URL}/nice/${region}/svt/${svt_id}`, {

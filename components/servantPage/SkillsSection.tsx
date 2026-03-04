@@ -321,14 +321,13 @@ export function SkillsSection({
   if (!activeSkillGroups.length && !appendSkills.length && !classPassive.length) return null
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Skills</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-8">
-        {activeSkillGroups.length ? (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Active Skills</h3>
+    <div className="space-y-6">
+      {activeSkillGroups.length ? (
+        <Card className="gap-4 py-4">
+          <CardHeader className="px-4">
+            <CardTitle className="text-lg">Active Skills</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4">
             <div className="grid gap-4">
               {activeSkillGroups.map((skillGroup, index) =>
                 skillGroup.length > 1 ? (
@@ -339,17 +338,34 @@ export function SkillsSection({
                 ) : (
                   <SkillGroup
                     key={`active-skill-single-${index}`}
-                    title=""
                     skills={skillGroup}
                   />
                 )
               )}
             </div>
-          </div>
-        ) : null}
-        <SkillGroup title="Append Skills" skills={appendSkills} stripValues />
-        <SkillGroup title="Class Skills" skills={classPassive} isPassive />
-      </CardContent>
-    </Card>
+          </CardContent>
+        </Card>
+      ) : null}
+      {appendSkills.length ? (
+        <Card className="gap-4 py-4">
+          <CardHeader className="px-4">
+            <CardTitle className="text-lg">Append Skills</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4">
+            <SkillGroup skills={appendSkills} stripValues />
+          </CardContent>
+        </Card>
+      ) : null}
+      {classPassive.length ? (
+        <Card className="gap-4 py-4">
+          <CardHeader className="px-4">
+            <CardTitle className="text-lg">Class Skills</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4">
+            <SkillGroup skills={classPassive} isPassive />
+          </CardContent>
+        </Card>
+      ) : null}
+    </div>
   )
 }

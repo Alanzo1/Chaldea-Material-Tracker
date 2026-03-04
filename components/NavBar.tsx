@@ -72,71 +72,71 @@ export function NavBar() {
   const router = useRouter()
   const { servants, filters, setFilters } = useServants()
 
-  const classOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(servants.map((servant: any) => String(servant.className).toLowerCase()))
-      ).sort(),
+  const classOptions = useMemo<string[]>(
+    () => {
+      const values: string[] = servants.map((servant: any) =>
+        String(servant.className).toLowerCase()
+      )
+
+      return [...new Set(values)].sort()
+    },
     [servants]
   )
 
-  const buffOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          servants.flatMap((servant: any) =>
-            (servant.buffs ?? []).map((buff: string) => String(buff))
-          )
-        )
-      ).sort(),
+  const buffOptions = useMemo<string[]>(
+    () => {
+      const values: string[] = servants.flatMap((servant: any) =>
+        (servant.buffs ?? []).map((buff: string) => String(buff))
+      )
+
+      return [...new Set(values)].sort()
+    },
     [servants]
   )
 
-  const debuffOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          servants.flatMap((servant: any) =>
-            (servant.debuffs ?? []).map((debuff: string) => String(debuff))
-          )
-        )
-      ).sort(),
+  const debuffOptions = useMemo<string[]>(
+    () => {
+      const values: string[] = servants.flatMap((servant: any) =>
+        (servant.debuffs ?? []).map((debuff: string) => String(debuff))
+      )
+
+      return [...new Set(values)].sort()
+    },
     [servants]
   )
 
-  const traitOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          servants.flatMap((servant: any) =>
-            (servant.traits ?? []).map((trait: string) => String(trait))
-          )
-        )
-      ).sort(),
+  const traitOptions = useMemo<string[]>(
+    () => {
+      const values: string[] = servants.flatMap((servant: any) =>
+        (servant.traits ?? []).map((trait: string) => String(trait))
+      )
+
+      return [...new Set(values)].sort()
+    },
     [servants]
   )
 
-  const alignmentOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          servants.flatMap((servant: any) =>
-            (servant.alignments ?? []).map((alignment: string) => String(alignment))
-          )
-        )
-      ).sort(),
+  const alignmentOptions = useMemo<string[]>(
+    () => {
+      const values: string[] = servants.flatMap((servant: any) =>
+        (servant.alignments ?? []).map((alignment: string) => String(alignment))
+      )
+
+      return [...new Set(values)].sort()
+    },
     [servants]
   )
 
-  const starOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(servants.map((servant: any) => String(servant.stars)))
-      ).sort(
+  const starOptions = useMemo<string[]>(
+    () => {
+      const values: string[] = servants.map((servant: any) => String(servant.stars))
+
+      return [...new Set(values)].sort(
         (left, right) =>
           Number(right.match(/\((\d+)\)/)?.[1] ?? 0) -
           Number(left.match(/\((\d+)\)/)?.[1] ?? 0)
-      ),
+      )
+    },
     [servants]
   )
 

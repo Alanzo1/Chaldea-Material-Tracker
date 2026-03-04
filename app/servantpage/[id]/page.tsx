@@ -3,6 +3,7 @@ import Link from "next/link"
 import { getServantData } from "@/app/services/api"
 import { ServantArtCard } from "@/components/servantPage/ServantArtCard"
 import { ServantHeaderCard } from "@/components/servantPage/ServantHeaderCard"
+import { ServantMetaCard } from "@/components/servantPage/ServantMetaCard"
 import { SkillsSection } from "@/components/servantPage/SkillsSection"
 import { ServantStatsCard } from "@/components/servantPage/ServantStatsCard"
 import { Button } from "@/components/ui/button"
@@ -81,11 +82,10 @@ export default async function ServantPage({ params }: ServantPageProps) {
     .map((card: string) => CARD_LABELS[String(card)] ?? String(card))
     .join(" ")
 
-  const alignment = (servant.raw?.traits ?? [])
+  const alignments = (servant.raw?.traits ?? [])
     .map((trait: any) => String(trait?.name ?? ""))
     .filter((trait: string) => trait.startsWith("alignment"))
     .map((trait: string) => toTitleCase(trait.replace(/^alignment/, "")))
-    .join(" / ")
 
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10">
@@ -103,14 +103,16 @@ export default async function ServantPage({ params }: ServantPageProps) {
         <div className="shrink-0">
           <ServantArtCard name={servant.name} options={artOptions} />
         </div>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 space-y-6">
           <ServantStatsCard
             maxHp={Number(servant.raw?.hpMax ?? 0)}
             maxAtk={Number(servant.raw?.atkMax ?? 0)}
+            deck={deck}
+          />
+          <ServantMetaCard
             traits={visibleTraits}
             attribute={String(servant.raw?.attribute ?? "")}
-            alignment={alignment}
-            deck={deck}
+            alignments={alignments}
           />
         </div>
       </section>

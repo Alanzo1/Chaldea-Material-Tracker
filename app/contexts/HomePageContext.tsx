@@ -1,8 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from "react"
-
-import { getServantsHomePage } from "../services/api"
+import { createContext, useContext, useMemo, useState } from "react"
 
 const ServantContext = createContext<any>(null)
 
@@ -30,29 +28,19 @@ function matchesAny(values: string[] = [], selected: string[]) {
   return selected.some((value) => normalizedValues.includes(String(value).toLowerCase()))
 }
 
-export function ServantProvider({ children }: any) {
-  const [servants, setServants] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [filtered, setFiltered] = useState<any[]>([])
+export function ServantProvider({
+  children,
+  initialServants = [],
+}: {
+  children: React.ReactNode
+  initialServants?: any[]
+}) {
+  const [servants, setServants] = useState<any[]>(initialServants)
   const [filters, setFilters] = useState<ServantFilters>(defaultFilters)
 
-  useEffect(() => {
-    const loadServants = async () => {
-      try {
-        const servantData = await getServantsHomePage()
-        setServants(servantData)
-      } catch (err) {
-        console.log(err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadServants()
-  }, [])
-
-  useEffect(() => {
-    const nextFiltered = servants.filter((servant) => {
+  const filtered = useMemo(
+    () =>
+      servants.filter((servant) => {
       const classMatch =
         !filters.classes.length ||
         filters.classes.includes(String(servant.className).toLowerCase())
@@ -64,18 +52,13 @@ export function ServantProvider({ children }: any) {
       const starMatch = matchesAny([servant.stars], filters.stars)
 
       return classMatch && buffMatch && debuffMatch && traitMatch && alignmentMatch && starMatch
-    })
-
-    setFiltered(nextFiltered)
-  }, [filters, servants])
-
-  if (loading) {
-    return <div>Loading...</div>
-  }
+      }),
+    [filters, servants]
+  )
 
   return (
     <ServantContext.Provider
-      value={{ servants, setServants, filtered, setFiltered, filters, setFilters }}
+      value={{ servants, setServants, filtered, filters, setFilters }}
     >
       {children}
     </ServantContext.Provider>
