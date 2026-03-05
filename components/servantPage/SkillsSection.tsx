@@ -149,6 +149,11 @@ function formatLevelValue(label: string, value: unknown) {
   return formatPercentValue(value, divisor)
 }
 
+function shouldHideLevelRow(label: string) {
+  const normalized = label.toLowerCase()
+  return normalized.includes("bonus effect with")
+}
+
 function getLevels(skill: SkillLike) {
   const cooldownLevels = Array.isArray(skill.coolDown)
     ? skill.coolDown.filter((value) => typeof value === "number")
@@ -182,6 +187,7 @@ function getRows(skill: SkillLike) {
 
   ;(skill.functions ?? []).forEach((func: any, funcIndex: number) => {
     const label = getFunctionLabel(func) || `Effect ${funcIndex + 1}`
+    if (shouldHideLevelRow(label)) return
     const values = levels.map((_, index) => {
       const value = func?.svals?.[index]?.Value
       return formatLevelValue(label, value)

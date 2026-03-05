@@ -21,6 +21,17 @@ function normalizePopupText(val?: string) {
     return String(val ?? "").replace(/\s+/g, " ").trim();
 }
 
+function shouldExcludeAttackBonusLabel(val?: string) {
+    const normalized = normalizeEffectLabel(val);
+
+    return (
+        normalized.includes("bonus effect with") ||
+        normalized.includes("bonus buff") ||
+        normalized.includes("bonus debuff") ||
+        normalized.includes("when attacking")
+    );
+}
+
 const EXCLUDED_TRAITS = new Set([
     "servant",
     "canBeInBattle",
@@ -184,7 +195,11 @@ function transformServantsForHomePage(data: any[]) {
 
                     if (!buffs.length) {
                         const popupText = normalizePopupText(func.funcPopupText);
-                        if (popupText && popupText.toLowerCase() !== "none") {
+                        if (
+                            popupText &&
+                            popupText.toLowerCase() !== "none" &&
+                            !shouldExcludeAttackBonusLabel(popupText)
+                        ) {
                             if (targetsAlly) buffSet.add(popupText);
                             if (targetsEnemy) debuffSet.add(popupText);
                         }
@@ -199,11 +214,14 @@ function transformServantsForHomePage(data: any[]) {
 
                         if (canonicalEffects.length) {
                             canonicalEffects.forEach((effect) => {
+                                if (shouldExcludeAttackBonusLabel(effect)) return;
                                 if (targetsAlly) buffSet.add(effect);
                                 if (targetsEnemy) debuffSet.add(effect);
                             });
                             return;
                         }
+
+                        if (shouldExcludeAttackBonusLabel(b.name)) return;
 
                         if (sourceName && buffName === sourceName) return;
 
