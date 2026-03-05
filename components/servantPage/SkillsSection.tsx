@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 
+import { NoblePhantasmCard } from "@/components/servantPage/NoblePhantasmCard"
 import { SkillCard } from "@/components/servantPage/SkillCard"
 import {
   Card,
@@ -28,8 +29,21 @@ interface AppendPassiveEntry {
   skill?: SkillLike
 }
 
+interface NoblePhantasmLike {
+  id?: number
+  num?: number
+  name?: string
+  rank?: string
+  type?: string
+  card?: string
+  icon?: string
+  detail?: string
+  functions?: any[]
+}
+
 interface SkillsSectionProps {
   skills: SkillLike[]
+  noblePhantasms: NoblePhantasmLike[]
   appendPassive: AppendPassiveEntry[]
   classPassive: SkillLike[]
 }
@@ -78,6 +92,9 @@ function getFunctionLabel(func: any) {
   if (buffNames.length > 1) return buffNames.join(" / ")
 
   const fallback: Record<string, string> = {
+    damageNp: "NP damage",
+    damageNpIndividual: "NP damage",
+    damageNPPierce: "NP damage",
     gainHp: "Heal",
     gainNp: "NP Charge",
     gainStar: "Critical Stars",
@@ -104,6 +121,7 @@ function getFunctionIcon(func: any) {
 
 function shouldFormatAsPercent(label: string) {
   const normalized = label.toLowerCase()
+  if (normalized.includes("%")) return true
 
   const flatValueKeywords = [
     "cooldown",
@@ -125,6 +143,7 @@ function shouldFormatAsPercent(label: string) {
     "strength",
     "resist",
     "rate",
+    "attack",
     "buster",
     "arts",
     "quick",
@@ -132,6 +151,7 @@ function shouldFormatAsPercent(label: string) {
     "atk",
     "critical",
     "np",
+    "damage",
   ]
 
   return percentKeywords.some((keyword) => normalized.includes(keyword))
@@ -142,6 +162,8 @@ function isNpGaugeLabel(label: string) {
   return (
     normalized.includes("np charge") ||
     (normalized.includes("np gain") && !normalized.includes("np gain up")) ||
+    normalized.includes("np loss") ||
+    normalized.includes("charge loss") ||
     normalized.includes("np/turn") ||
     normalized.includes("np regen")
   )
@@ -155,6 +177,9 @@ function formatPercentValue(value: number, divisor: number) {
 function formatLevelValue(label: string, value: unknown) {
   if (typeof value !== "number") return "—"
   if (!shouldFormatAsPercent(label)) return String(value)
+  if (label.trim().toLowerCase() === "np gain") {
+    return formatPercentValue(value, 100)
+  }
   const divisor = isNpGaugeLabel(label) ? 100 : 10
   return formatPercentValue(value, divisor)
 }
@@ -163,7 +188,8 @@ function shouldHideLevelRow(label: string) {
   const normalized = label.toLowerCase()
   return (
     normalized.includes("bonus effect with") ||
-    normalized === "charge gain"
+    normalized === "charge gain" ||
+    normalized.includes("charge loss")
   )
 }
 
@@ -228,6 +254,110 @@ function splitNameAndRank(value?: string) {
   return {
     name: normalizeText(match[1]),
     rank: match[2].toUpperCase(),
+  }
+}
+
+function getNPEffectValue(entry: any) {
+  if (typeof entry?.Value === "number") return entry.Value
+  if (typeof entry?.Rate === "number") return entry.Rate
+  if (typeof entry?.Correction === "number") return entry.Correction
+  if (typeof entry?.AddCount === "number") return entry.AddCount
+  if (typeof entry?.RateCount === "number") return entry.RateCount
+  return null
+}
+
+function formatNPEffectLabel(label: string) {
+  const normalized = label.toLowerCase()
+  if (normalized === "damagenp") return "NP damage"
+  if (normalized === "damagenppierce") return "NP damage"
+  if (normalized === "np charge" || normalized === "np gain") return "NP Gain"
+  if (normalized === "heal") return "Heal Amount"
+  return label
+}
+
+function hasDistinctValues(values: string[]) {
+  const nonEmpty = values.filter((value) => value !== "—")
+  return new Set(nonEmpty).size > 1
+}
+
+function getNPTableData(np: NoblePhantasmLike) {
+  const levelRows: { label: string; values: string[]; icon?: string }[] = []
+  const overchargeRows: { label: string; values: string[]; icon?: string }[] = []
+
+  ;(np.functions ?? []).forEach((func: any, index: number) => {
+    const rawLabel = getFunctionLabel(func) || `Effect ${index + 1}`
+    if (shouldHideLevelRow(rawLabel)) return
+
+    const label = formatNPEffectLabel(rawLabel)
+    const icon = getFunctionIcon(func) || undefined
+    const levelValues = Array.from({ length: 5 }, (_, valueIndex) => {
+      const value = getNPEffectValue(func?.svals?.[valueIndex])
+      return formatLevelValue(label, value)
+    })
+
+    const hasLevelData = levelValues.some((value) => value !== "—")
+    const ocArrays = [func?.svals, func?.svals2, func?.svals3, func?.svals4, func?.svals5]
+    const ocEntries = ocArrays.map((values: any) => values?.[0] ?? null)
+
+    const correctionOverchargeValues = ocEntries.map((entry: any) =>
+      formatLevelValue("Special Attack", entry?.Correction)
+    )
+    const hasDistinctCorrectionOvercharge = hasDistinctValues(correctionOverchargeValues)
+
+    const overchargeLabel = hasDistinctCorrectionOvercharge
+      ? "Special attack damage +"
+      : label
+
+    const overchargeValues = hasDistinctCorrectionOvercharge
+      ? correctionOverchargeValues
+      : ocEntries.map((entry: any) => {
+          const value = getNPEffectValue(entry)
+          return formatLevelValue(overchargeLabel, value)
+        })
+    const hasOverchargeData = overchargeValues.some((value) => value !== "—")
+    const hasDistinctOvercharge = hasDistinctValues(overchargeValues)
+
+    if (hasDistinctOvercharge && hasOverchargeData) {
+      overchargeRows.push({
+        label: overchargeLabel,
+        values: overchargeValues,
+        icon,
+      })
+    }
+
+    if (hasLevelData && (!hasDistinctOvercharge || hasDistinctValues(levelValues))) {
+      levelRows.push({
+        label,
+        values: levelValues,
+        icon,
+      })
+    }
+  })
+
+  return {
+    levelRows,
+    overchargeRows,
+  }
+}
+
+function normalizeNPDescription(value?: string) {
+  return normalizeText(value).replace(/\s+\[\{0\}\]/g, "")
+}
+
+function getNPDescriptions(np: NoblePhantasmLike) {
+  const detail = normalizeNPDescription(np.detail)
+  const match = detail.match(/<([^>]*overcharge[^>]*)>/i)
+
+  if (!match) {
+    return {
+      baseDescription: detail,
+      overchargeDescription: "",
+    }
+  }
+
+  return {
+    baseDescription: detail.replace(match[0], "").replace(/\s{2,}/g, " ").trim(),
+    overchargeDescription: match[1].trim(),
   }
 }
 
@@ -327,8 +457,59 @@ function groupActiveSkills(skills: SkillLike[]) {
   return [...grouped.values()]
 }
 
+function groupNoblePhantasms(noblePhantasms: NoblePhantasmLike[]) {
+  const grouped = new Map<string, NoblePhantasmLike[]>()
+
+  noblePhantasms.forEach((np, index) => {
+    const key = String(np.num ?? `np-${index}`)
+    const current = grouped.get(key) ?? []
+    current.push(np)
+    grouped.set(key, current)
+  })
+
+  return [...grouped.values()]
+}
+
+function NPVariantTabs({ noblePhantasms }: { noblePhantasms: NoblePhantasmLike[] }) {
+  const [activeIndex, setActiveIndex] = useState(0)
+  const activeNP = noblePhantasms[activeIndex] ?? noblePhantasms[0]
+  const titleParts = splitNameAndRank(activeNP.name)
+  const { baseDescription, overchargeDescription } = getNPDescriptions(activeNP)
+  const { levelRows, overchargeRows } = getNPTableData(activeNP)
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        {noblePhantasms.map((np, index) => (
+          <Button
+            key={np.id ?? `${np.name}-${index}`}
+            type="button"
+            size="sm"
+            variant={index === activeIndex ? "default" : "outline"}
+            onClick={() => setActiveIndex(index)}
+          >
+            {getVariantLabel(index)}
+          </Button>
+        ))}
+      </div>
+      <NoblePhantasmCard
+        nameImage={activeNP.icon}
+        name={titleParts.name}
+        rank={titleParts.rank || activeNP.rank}
+        card={activeNP.card}
+        npType={activeNP.type}
+        baseDescription={baseDescription}
+        overchargeDescription={overchargeDescription}
+        levelRows={levelRows}
+        overchargeRows={overchargeRows}
+      />
+    </div>
+  )
+}
+
 export function SkillsSection({
   skills,
+  noblePhantasms,
   appendPassive,
   classPassive,
 }: SkillsSectionProps) {
@@ -336,8 +517,9 @@ export function SkillsSection({
     .map((entry) => entry.skill)
     .filter(Boolean) as SkillLike[]
   const activeSkillGroups = groupActiveSkills(skills)
+  const noblePhantasmGroups = groupNoblePhantasms(noblePhantasms)
 
-  if (!activeSkillGroups.length && !appendSkills.length && !classPassive.length) return null
+  if (!activeSkillGroups.length && !noblePhantasmGroups.length && !appendSkills.length && !classPassive.length) return null
 
   return (
     <div className="space-y-6">
@@ -359,6 +541,47 @@ export function SkillsSection({
                     key={`active-skill-single-${index}`}
                     skills={skillGroup}
                   />
+                )
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+      {noblePhantasmGroups.length ? (
+        <Card className="gap-4 py-4">
+          <CardHeader className="px-4">
+            <CardTitle className="text-lg">Noble Phantasm</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4">
+            <div className="grid gap-4">
+              {noblePhantasmGroups.map((npGroup, index) =>
+                npGroup.length > 1 ? (
+                  <NPVariantTabs
+                    key={`np-group-${index}`}
+                    noblePhantasms={npGroup}
+                  />
+                ) : (
+                  (() => {
+                    const np = npGroup[0]
+                    const titleParts = splitNameAndRank(np.name)
+                    const { baseDescription, overchargeDescription } = getNPDescriptions(np)
+                    const { levelRows, overchargeRows } = getNPTableData(np)
+
+                    return (
+                      <NoblePhantasmCard
+                        key={`np-single-${index}`}
+                        nameImage={np.icon}
+                        name={titleParts.name}
+                        rank={titleParts.rank || np.rank}
+                        card={np.card}
+                        npType={np.type}
+                        baseDescription={baseDescription}
+                        overchargeDescription={overchargeDescription}
+                        levelRows={levelRows}
+                        overchargeRows={overchargeRows}
+                      />
+                    )
+                  })()
                 )
               )}
             </div>

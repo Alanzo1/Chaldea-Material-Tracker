@@ -28,7 +28,8 @@ function shouldExcludeAttackBonusLabel(val?: string) {
         normalized.includes("bonus effect with") ||
         normalized.includes("bonus buff") ||
         normalized.includes("bonus debuff") ||
-        normalized.includes("when attacking")
+        normalized.includes("when attacking") ||
+        normalized.includes("charge loss")
     );
 }
 

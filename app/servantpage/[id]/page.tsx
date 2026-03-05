@@ -118,6 +118,7 @@ export default async function ServantPage({ params }: ServantPageProps) {
       </section>
       <SkillsSection
         skills={servant.raw?.skills ?? []}
+        noblePhantasms={servant.raw?.noblePhantasms ?? []}
         appendPassive={servant.raw?.appendPassive ?? []}
         classPassive={servant.raw?.classPassive ?? []}
       />
