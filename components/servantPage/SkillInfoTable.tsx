@@ -1,5 +1,7 @@
 "use client"
 
+import Image from "next/image"
+
 import {
   Table,
   TableBody,
@@ -12,6 +14,7 @@ import {
 interface SkillInfoRow {
   label: string
   values: string[]
+  icon?: string
 }
 
 interface SkillInfoTableProps {
@@ -35,7 +38,20 @@ export function SkillInfoTable({ levels, rows }: SkillInfoTableProps) {
       <TableBody>
         {rows.map((row, rowIndex) => (
           <TableRow key={`${row.label}-${rowIndex}`}>
-            <TableCell className="font-medium">{row.label}</TableCell>
+            <TableCell className="font-medium">
+              <div className="flex items-center gap-2">
+                {row.icon ? (
+                  <Image
+                    src={row.icon}
+                    alt={row.label}
+                    width={18}
+                    height={18}
+                    className="rounded-sm"
+                  />
+                ) : null}
+                <span>{row.label}</span>
+              </div>
+            </TableCell>
             {row.values.map((value, index) => (
               <TableCell key={`${row.label}-${index}`}>{value}</TableCell>
             ))}

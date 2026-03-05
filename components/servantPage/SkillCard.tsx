@@ -14,6 +14,7 @@ import {
 interface SkillInfoRow {
   label: string
   values: string[]
+  icon?: string
 }
 
 interface SkillCardProps {

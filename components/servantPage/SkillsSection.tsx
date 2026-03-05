@@ -92,6 +92,16 @@ function getFunctionLabel(func: any) {
   return fallback[String(func?.funcType ?? "")] ?? normalizeText(func?.funcType) ?? "Effect"
 }
 
+function getFunctionIcon(func: any) {
+  const popupIcon = normalizeText(func?.funcPopupIcon)
+  if (popupIcon) return popupIcon
+
+  const buffIcon = normalizeText(func?.buffs?.[0]?.icon)
+  if (buffIcon) return buffIcon
+
+  return ""
+}
+
 function shouldFormatAsPercent(label: string) {
   const normalized = label.toLowerCase()
 
@@ -151,7 +161,10 @@ function formatLevelValue(label: string, value: unknown) {
 
 function shouldHideLevelRow(label: string) {
   const normalized = label.toLowerCase()
-  return normalized.includes("bonus effect with")
+  return (
+    normalized.includes("bonus effect with") ||
+    normalized === "charge gain"
+  )
 }
 
 function getLevels(skill: SkillLike) {
@@ -172,7 +185,7 @@ function getRows(skill: SkillLike) {
   const levels = getLevels(skill)
   if (!levels.length) return { levels: [], rows: [] as { label: string; values: string[] }[] }
 
-  const rows: { label: string; values: string[] }[] = []
+  const rows: { label: string; values: string[]; icon?: string }[] = []
 
   const cooldown = Array.isArray(skill.coolDown)
     ? skill.coolDown.slice(0, levels.length).map((value) => String(value))
@@ -195,7 +208,7 @@ function getRows(skill: SkillLike) {
 
     if (values.every((value) => value === "—")) return
 
-    rows.push({ label, values })
+    rows.push({ label, values, icon: getFunctionIcon(func) || undefined })
   })
 
   return { levels, rows }
