@@ -121,6 +121,10 @@ export default async function ServantPage({ params }: ServantPageProps) {
         noblePhantasms={servant.raw?.noblePhantasms ?? []}
         appendPassive={servant.raw?.appendPassive ?? []}
         classPassive={servant.raw?.classPassive ?? []}
+        ascensionMaterials={servant.raw?.ascensionMaterials ?? {}}
+        skillMaterials={servant.raw?.skillMaterials ?? {}}
+        appendSkillMaterials={servant.raw?.appendSkillMaterials ?? {}}
+        costumeMaterials={servant.raw?.costumeMaterials ?? {}}
       />
     </main>
   )

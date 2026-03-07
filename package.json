@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "build:drops": "node scripts/build-drop-data.mjs",
+    "prebuild": "npm run build:drops",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

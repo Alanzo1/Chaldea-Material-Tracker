@@ -3,6 +3,7 @@
 import { useState } from "react"
 
 import { NoblePhantasmCard } from "@/components/servantPage/NoblePhantasmCard"
+import { MaterialsSection } from "@/components/servantPage/MaterialsSection"
 import { SkillCard } from "@/components/servantPage/SkillCard"
 import {
   Card,
@@ -46,6 +47,10 @@ interface SkillsSectionProps {
   noblePhantasms: NoblePhantasmLike[]
   appendPassive: AppendPassiveEntry[]
   classPassive: SkillLike[]
+  ascensionMaterials?: Record<string, any>
+  skillMaterials?: Record<string, any>
+  appendSkillMaterials?: Record<string, any>
+  costumeMaterials?: Record<string, any>
 }
 
 function normalizeText(value?: string) {
@@ -512,14 +517,33 @@ export function SkillsSection({
   noblePhantasms,
   appendPassive,
   classPassive,
+  ascensionMaterials,
+  skillMaterials,
+  appendSkillMaterials,
+  costumeMaterials,
 }: SkillsSectionProps) {
   const appendSkills = appendPassive
     .map((entry) => entry.skill)
     .filter(Boolean) as SkillLike[]
   const activeSkillGroups = groupActiveSkills(skills)
   const noblePhantasmGroups = groupNoblePhantasms(noblePhantasms)
+  const activeSkillCount = Math.max(activeSkillGroups.length, 1)
+  const appendSkillCount = Math.max(appendSkills.length, 1)
+  const hasMaterials =
+    Object.keys(ascensionMaterials ?? {}).length > 0 ||
+    Object.keys(skillMaterials ?? {}).length > 0 ||
+    Object.keys(appendSkillMaterials ?? {}).length > 0 ||
+    Object.keys(costumeMaterials ?? {}).length > 0
 
-  if (!activeSkillGroups.length && !noblePhantasmGroups.length && !appendSkills.length && !classPassive.length) return null
+  if (
+    !activeSkillGroups.length &&
+    !noblePhantasmGroups.length &&
+    !appendSkills.length &&
+    !classPassive.length &&
+    !hasMaterials
+  ) {
+    return null
+  }
 
   return (
     <div className="space-y-6">
@@ -607,6 +631,16 @@ export function SkillsSection({
             <SkillGroup skills={classPassive} isPassive />
           </CardContent>
         </Card>
+      ) : null}
+      {hasMaterials ? (
+        <MaterialsSection
+          ascensionMaterials={ascensionMaterials}
+          skillMaterials={skillMaterials}
+          appendSkillMaterials={appendSkillMaterials}
+          costumeMaterials={costumeMaterials}
+          skillMultiplier={activeSkillCount}
+          appendSkillMultiplier={appendSkillCount}
+        />
       ) : null}
     </div>
   )
