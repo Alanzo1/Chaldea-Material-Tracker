@@ -1,7 +1,5 @@
 import "./globals.css"
 
-import { ThemeToggle } from "@/components/ThemeToggle"
-
 export default function RootLayout({
   children,
 }: {
@@ -15,19 +13,14 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  var storedTheme = localStorage.getItem("theme");
-                  var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-                  var theme = storedTheme === "dark" || storedTheme === "light"
-                    ? storedTheme
-                    : (prefersDark ? "dark" : "light");
-                  document.documentElement.classList.toggle("dark", theme === "dark");
+                  localStorage.setItem("theme", "dark");
+                  document.documentElement.classList.add("dark");
                 } catch (e) {}
               })();
             `,
           }}
         />
         {children}
-        <ThemeToggle />
       </body>
     </html>
   )
