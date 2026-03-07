@@ -95,6 +95,7 @@ export default async function ServantPage({ params }: ServantPageProps) {
         </Button>
       </div>
       <ServantHeaderCard
+        servantId={Number(servant.id)}
         name={servant.name}
         className={servant.className}
         rarity={servant.rarity}

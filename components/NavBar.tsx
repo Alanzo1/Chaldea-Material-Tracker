@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 import { useServants } from "@/app/contexts/HomePageContext"
 import { Button } from "@/components/ui/button"
@@ -69,7 +69,6 @@ function FilterSection({
 }
 
 export function NavBar() {
-  const router = useRouter()
   const { servants, filters, setFilters } = useServants()
 
   const classOptions = useMemo<string[]>(
@@ -273,8 +272,8 @@ export function NavBar() {
         </PopoverContent>
       </Popover>
 
-      <Button variant="ghost" onClick={() => router.push("/pages/about")}>
-        Go to Test
+      <Button asChild variant="outline">
+        <Link href="/favorites">Favorites</Link>
       </Button>
     </div>
   )
