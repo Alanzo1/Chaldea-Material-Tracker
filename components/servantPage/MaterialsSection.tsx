@@ -19,6 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useState } from "react"
+import { usePathname } from "next/navigation"
 
 interface MaterialItemLike {
   amount?: number
@@ -222,16 +223,22 @@ function normalizeMaterialDetail(detail?: string) {
   return detail.replace(/["\r\n]+/g, " ").replace(/\s+/g, " ").trim()
 }
 
-function getMaterialHref(material: { id?: number; name: string; icon: string; detail?: string }) {
+function getMaterialHref(
+  material: { id?: number; name: string; icon: string; detail?: string },
+  returnTo?: string
+) {
   if (!material.id) return null
   const nameParam = encodeURIComponent(material.name)
   const iconParam = encodeURIComponent(material.icon)
   const detail = normalizeMaterialDetail(material.detail)
   const detailParam = detail ? `&detail=${encodeURIComponent(detail)}` : ""
-  return `/material/${material.id}?name=${nameParam}&icon=${iconParam}${detailParam}`
+  const returnToParam = returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""
+  return `/material/${material.id}?name=${nameParam}&icon=${iconParam}${detailParam}${returnToParam}`
 }
 
 function MaterialTable({ rows }: MaterialTableProps) {
+  const pathname = usePathname()
+
   if (!rows.length) return null
 
   return (
@@ -252,7 +259,7 @@ function MaterialTable({ rows }: MaterialTableProps) {
               {row.materials.length ? (
                 <div className="flex flex-wrap gap-3">
                   {row.materials.map((material) => {
-                    const href = getMaterialHref(material)
+                    const href = getMaterialHref(material, pathname)
 
                     if (!href) {
                       return (
@@ -316,6 +323,8 @@ export function MaterialsSection({
   skillMultiplier = 3,
   appendSkillMultiplier = 3,
 }: MaterialsSectionProps) {
+  const pathname = usePathname()
+
   const tabs = [
     {
       id: "ascension",
@@ -407,7 +416,7 @@ export function MaterialsSection({
                       {materials.length ? (
                         <div className="flex flex-wrap gap-3">
                           {materials.map((material) => {
-                            const href = getMaterialHref(material)
+                            const href = getMaterialHref(material, pathname)
 
                             if (!href) {
                               return (

@@ -222,15 +222,6 @@ export default function MaterialFarmingCard({
             </div>
             )
           })}
-          {nodes[0]?.apPerDrop > 0 ? (
-            <p className="text-xs text-slate-400">
-              Best efficiency: {nodes[0].apPerDrop.toFixed(1)} AP per drop
-            </p>
-          ) : (
-            <p className="text-xs text-slate-400">
-              Training Grounds source listed; drop-rate sample data unavailable.
-            </p>
-          )}
         </div>
       ) : (
         <p className="text-sm text-slate-300">No farming data available</p>

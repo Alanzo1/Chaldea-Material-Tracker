@@ -11,6 +11,7 @@ interface MaterialPageProps {
     name?: string
     icon?: string
     detail?: string
+    returnTo?: string
   }>
 }
 
@@ -34,12 +35,14 @@ export default async function MaterialPage({
   const itemName = decodeParam(resolvedSearchParams.name) || `Material ${itemId}`
   const itemIcon = decodeParam(resolvedSearchParams.icon)
   const itemDescription = decodeParam(resolvedSearchParams.detail)
+  const returnTo = decodeParam(resolvedSearchParams.returnTo)
+  const backHref = returnTo.startsWith("/") ? returnTo : "/"
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-10">
       <div>
         <Button asChild variant="outline">
-          <Link href="/">Back to Homepage</Link>
+          <Link href={backHref}>Back to Servant</Link>
         </Button>
       </div>
 
