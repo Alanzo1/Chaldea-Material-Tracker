@@ -29,6 +29,12 @@ interface EfficiencyLookup {
   [materialId: number]: number
 }
 
+const NUMBER_FORMATTER = new Intl.NumberFormat("en-US")
+
+function formatNumber(value: number) {
+  return NUMBER_FORMATTER.format(Number.isFinite(value) ? value : 0)
+}
+
 function getStarColorClass(rarity: number) {
   if (rarity <= 2) return "text-amber-700"
   if (rarity === 3) return "text-slate-400"
@@ -60,6 +66,7 @@ function getTabHeader(activeTab: "tracker" | "materials" | "farming") {
 
 export default function TrackMaterialsPage() {
   const router = useRouter()
+  const [currentQpInput, setCurrentQpInput] = useState("0")
 
   const [activeTab, setActiveTab] = useState<"tracker" | "materials" | "farming">("tracker")
   const [trackerState, setTrackerState] = useState<TrackedMaterialsState>({
@@ -98,6 +105,15 @@ export default function TrackMaterialsPage() {
       .catch(() => {
         setMaterialIndex([])
       })
+
+    try {
+      const raw = window.localStorage.getItem("trackerCurrentQp")
+      const parsed = Number(raw ?? 0)
+      const safeValue = Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0
+      setCurrentQpInput(String(safeValue))
+    } catch {
+      setCurrentQpInput("0")
+    }
   }, [])
 
   const aggregate = useMemo(
@@ -243,6 +259,29 @@ export default function TrackMaterialsPage() {
     }))
   }
 
+  const handleCurrentQpChange = (value: string) => {
+    if (value === "") {
+      setCurrentQpInput("")
+      try {
+        window.localStorage.setItem("trackerCurrentQp", "0")
+      } catch {
+        // no-op
+      }
+      return
+    }
+
+    const parsed = Number(value)
+    const safeValue = Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0
+    setCurrentQpInput(String(safeValue))
+    try {
+      window.localStorage.setItem("trackerCurrentQp", String(safeValue))
+    } catch {
+      // no-op
+    }
+  }
+
+  const currentQp = Number(currentQpInput === "" ? 0 : currentQpInput)
+
   return (
     <main className="mx-auto flex max-w-7xl flex-col gap-6 px-6 py-10">
       <div className="flex flex-wrap items-center gap-3">
@@ -288,7 +327,21 @@ export default function TrackMaterialsPage() {
               Total tracked: {trackerState.servants.length} servant
               {trackerState.servants.length === 1 ? "" : "s"}
             </p>
-            <p className="mt-1 text-sm">QP total needed: {aggregate.qp.toLocaleString()}</p>
+            <p className="mt-1 text-sm">QP total needed: {formatNumber(aggregate.qp)}</p>
+            <div className="mt-2 grid gap-2 sm:max-w-sm">
+              <label className="space-y-1 text-xs text-muted-foreground">
+                Current QP
+                <Input
+                  type="number"
+                  min={0}
+                  value={currentQpInput}
+                  onChange={(event) => handleCurrentQpChange(event.target.value)}
+                />
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Remaining QP needed: {formatNumber(Math.max(0, aggregate.qp - currentQp))}
+              </p>
+            </div>
             <div className="mt-3 h-2 w-full overflow-hidden rounded bg-muted">
               <div
                 className="h-full bg-sky-500"
@@ -461,7 +514,7 @@ export default function TrackMaterialsPage() {
                               <div className="min-w-0">
                                 <p className="truncate text-sm font-medium">{material.name}</p>
                                 <p className="text-xs text-muted-foreground">
-                                  Needed {neededAmount.toLocaleString()} · Owned {ownedAmount.toLocaleString()}
+                                  Needed {formatNumber(neededAmount)} · Owned {formatNumber(ownedAmount)}
                                 </p>
                               </div>
                             </div>
@@ -519,8 +572,8 @@ export default function TrackMaterialsPage() {
                   <p className="text-sm font-medium">{material.name}</p>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Needed {material.amount.toLocaleString()} · Owned {material.owned.toLocaleString()} · Remaining{" "}
-                  {material.remaining.toLocaleString()}
+                  Needed {formatNumber(material.amount)} · Owned {formatNumber(material.owned)} · Remaining{" "}
+                  {formatNumber(material.remaining)}
                 </p>
               </Link>
             ))}
@@ -549,7 +602,7 @@ export default function TrackMaterialsPage() {
                   <p className="font-medium">{material.name}</p>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Remaining: {material.remaining.toLocaleString()}
+                  Remaining: {formatNumber(material.remaining)}
                 </p>
               </div>
               <MaterialFarmingCard

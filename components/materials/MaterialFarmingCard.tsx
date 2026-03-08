@@ -29,6 +29,12 @@ interface MaterialFarmingCardProps {
   className?: string
 }
 
+const NUMBER_FORMATTER = new Intl.NumberFormat("en-US")
+
+function formatNumber(value: number) {
+  return NUMBER_FORMATTER.format(Number.isFinite(value) ? value : 0)
+}
+
 function getContainerClassName(className?: string) {
   return `rounded-xl border border-slate-700/70 bg-slate-900/85 p-4 text-slate-100 shadow-sm ${className ?? ""}`.trim()
 }
@@ -220,11 +226,11 @@ export default function MaterialFarmingCard({
             </label>
             <div className="text-xs text-slate-300">
               <p>Total needed</p>
-              <p className="text-sm font-medium text-slate-100">{totalRequiredQuantity.toLocaleString()}</p>
+              <p className="text-sm font-medium text-slate-100">{formatNumber(totalRequiredQuantity)}</p>
             </div>
             <div className="text-xs text-slate-300">
               <p>Remaining</p>
-              <p className="text-sm font-medium text-slate-100">{remainingQuantity.toLocaleString()}</p>
+              <p className="text-sm font-medium text-slate-100">{formatNumber(remainingQuantity)}</p>
             </div>
           </div>
           <div className="h-2 w-full overflow-hidden rounded bg-slate-700/80">

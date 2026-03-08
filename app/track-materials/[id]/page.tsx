@@ -23,6 +23,12 @@ interface StageProgressRow {
   progressPercent: number
 }
 
+const NUMBER_FORMATTER = new Intl.NumberFormat("en-US")
+
+function formatNumber(value: number) {
+  return NUMBER_FORMATTER.format(Number.isFinite(value) ? value : 0)
+}
+
 function toNumber(value: unknown, fallback = 0) {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : fallback
@@ -327,7 +333,7 @@ export default function TrackedServantDetailPage() {
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-medium">{row.label}</p>
                   <p className="text-xs text-muted-foreground">
-                    QP: {row.qp.toLocaleString()} · Progress: {row.progressPercent.toFixed(1)}%
+                    QP: {formatNumber(row.qp)} · Progress: {row.progressPercent.toFixed(1)}%
                   </p>
                 </div>
                 <div className="mt-2 h-2 w-full overflow-hidden rounded bg-muted">
@@ -395,7 +401,7 @@ export default function TrackedServantDetailPage() {
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-medium">{row.label}</p>
                     <p className="text-xs text-muted-foreground">
-                      QP: {row.qp.toLocaleString()} · Progress: {row.progressPercent.toFixed(1)}%
+                      QP: {formatNumber(row.qp)} · Progress: {row.progressPercent.toFixed(1)}%
                     </p>
                   </div>
                   <div className="mt-2 h-2 w-full overflow-hidden rounded bg-muted">
@@ -464,7 +470,7 @@ export default function TrackedServantDetailPage() {
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-medium">{row.label}</p>
                     <p className="text-xs text-muted-foreground">
-                      QP: {row.qp.toLocaleString()} · Progress: {row.progressPercent.toFixed(1)}%
+                      QP: {formatNumber(row.qp)} · Progress: {row.progressPercent.toFixed(1)}%
                     </p>
                   </div>
                   <div className="mt-2 h-2 w-full overflow-hidden rounded bg-muted">
