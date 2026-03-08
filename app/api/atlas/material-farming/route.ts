@@ -25,9 +25,18 @@ interface QuestMeta {
 
 let questMetaByIdPromise: Promise<Map<number, QuestMeta>> | null = null
 
+const DEFAULT_LIMIT = 3
+const MAX_LIMIT = 100
+const DEFAULT_MIN_RUNS = 200
+const MAX_ALL_RESULTS = 500
+
 function toNumber(value: string | null, fallback: number) {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
 }
 
 function toArray<T>(value: unknown): T[] {
@@ -169,17 +178,25 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing itemId" }, { status: 400 })
   }
 
-  if (itemId === "6999") {
+  const numericItemId = toNumber(itemId, 0)
+  if (!Number.isInteger(numericItemId) || numericItemId <= 0) {
+    return NextResponse.json({ error: "Invalid itemId" }, { status: 400 })
+  }
+
+  if (numericItemId === 6999) {
     return NextResponse.json({ nodes: [] })
   }
 
   const all = ["1", "true", "yes"].includes(
     String(request.nextUrl.searchParams.get("all") ?? "").toLowerCase()
   )
-  const limit = Math.max(1, toNumber(request.nextUrl.searchParams.get("limit"), 3))
-  const minRuns = Math.max(0, toNumber(request.nextUrl.searchParams.get("minRuns"), 200))
+  const limit = clamp(
+    toNumber(request.nextUrl.searchParams.get("limit"), DEFAULT_LIMIT),
+    1,
+    MAX_LIMIT
+  )
+  const minRuns = Math.max(0, toNumber(request.nextUrl.searchParams.get("minRuns"), DEFAULT_MIN_RUNS))
 
-  const numericItemId = toNumber(itemId, 0)
   const rawNodes = Array.isArray(data[itemId]) ? [...data[itemId]] : []
   const trainingGroundNodes = getTrainingGroundNodes(numericItemId)
   trainingGroundNodes.forEach((trainingNode) => {
@@ -187,17 +204,29 @@ export async function GET(request: NextRequest) {
       rawNodes.push(trainingNode)
     }
   })
+
+  if (!rawNodes.length) {
+    return NextResponse.json({ nodes: [] })
+  }
+
   const normalizedNodes = rawNodes.map(normalizeNode)
-  const questMetaById = await getQuestMetaById()
-  const enrichedNodes = normalizedNodes.map((node) => enrichWithQuestMeta(node, questMetaById))
-  const sortedNodes = [...enrichedNodes].sort((a, b) => a.apPerDrop - b.apPerDrop)
+  const needsQuestMeta = normalizedNodes.some((node) => Number(node.id) > 0)
+  const questMetaById = needsQuestMeta ? await getQuestMetaById() : null
+  const enrichedNodes = questMetaById
+    ? normalizedNodes.map((node) => enrichWithQuestMeta(node, questMetaById))
+    : normalizedNodes
+  const sortedNodes = [...enrichedNodes].sort((a, b) => {
+    const aApPerDrop = Number.isFinite(a.apPerDrop) ? a.apPerDrop : Number.POSITIVE_INFINITY
+    const bApPerDrop = Number.isFinite(b.apPerDrop) ? b.apPerDrop : Number.POSITIVE_INFINITY
+    return aApPerDrop - bApPerDrop
+  })
   const filteredNodes = all
     ? sortedNodes
     : sortedNodes.filter((node) => Number(node.runs ?? 0) >= minRuns || Number(node.id) <= 0)
 
   let nodes: FarmingNode[] = []
   if (all) {
-    nodes = filteredNodes
+    nodes = filteredNodes.slice(0, MAX_ALL_RESULTS)
   } else {
     const pinnedNodes = filteredNodes.filter(isPinnedTrainingNode)
     const normalNodes = filteredNodes.filter((node) => !isPinnedTrainingNode(node))

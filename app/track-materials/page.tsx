@@ -489,57 +489,53 @@ export default function TrackMaterialsPage() {
                   onChange={(event) => setMaterialSearchQuery(event.target.value)}
                 />
                 <div className="max-h-[60vh] space-y-2 overflow-y-auto">
-                  {filteredMaterialResults.map((material) => (
-                    <div
-                      key={material.id}
-                      className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
-                    >
-                      {(() => {
-                        const aggregateMaterial = aggregateByMaterialId.get(material.id)
-                        const neededAmount = Number(aggregateMaterial?.amount ?? 0)
-                        const ownedAmount = Number(
-                          trackerState.ownedByMaterialId[String(material.id)] ?? 0
-                        )
+                  {filteredMaterialResults.map((material) => {
+                    const aggregateMaterial = aggregateByMaterialId.get(material.id)
+                    const neededAmount = Number(aggregateMaterial?.amount ?? 0)
+                    const ownedAmount = Number(
+                      trackerState.ownedByMaterialId[String(material.id)] ?? 0
+                    )
 
-                        return (
-                          <>
-                            <div className="flex min-w-0 items-center gap-2">
-                              <Image
-                                src={material.icon}
-                                alt={material.name}
-                                width={20}
-                                height={20}
-                                className="rounded-sm"
-                              />
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-medium">{material.name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  Needed {formatNumber(neededAmount)} · Owned {formatNumber(ownedAmount)}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Input
-                                type="number"
-                                min={0}
-                                value={pendingOwnedByMaterialId[material.id] ?? ""}
-                                onChange={(event) =>
-                                  setPendingOwnedByMaterialId((prev) => ({
-                                    ...prev,
-                                    [material.id]: event.target.value,
-                                  }))
-                                }
-                                className="w-24"
-                              />
-                              <Button type="button" size="sm" onClick={() => handleSaveOwnedQuantity(material.id)}>
-                                Save
-                              </Button>
-                            </div>
-                          </>
-                        )
-                      })()}
-                    </div>
-                  ))}
+                    return (
+                      <div
+                        key={material.id}
+                        className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
+                      >
+                        <div className="flex min-w-0 items-center gap-2">
+                          <Image
+                            src={material.icon}
+                            alt={material.name}
+                            width={20}
+                            height={20}
+                            className="rounded-sm"
+                          />
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">{material.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Needed {formatNumber(neededAmount)} · Owned {formatNumber(ownedAmount)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min={0}
+                            value={pendingOwnedByMaterialId[material.id] ?? ""}
+                            onChange={(event) =>
+                              setPendingOwnedByMaterialId((prev) => ({
+                                ...prev,
+                                [material.id]: event.target.value,
+                              }))
+                            }
+                            className="w-24"
+                          />
+                          <Button type="button" size="sm" onClick={() => handleSaveOwnedQuantity(material.id)}>
+                            Save
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })}
                   {!filteredMaterialResults.length ? (
                     <p className="text-sm text-muted-foreground">No matching materials.</p>
                   ) : null}
