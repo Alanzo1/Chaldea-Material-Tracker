@@ -275,6 +275,9 @@ export function NavBar() {
       <Button asChild variant="outline">
         <Link href="/favorites">Favorites</Link>
       </Button>
+      <Button asChild variant="outline">
+        <Link href="/track-materials">Tracker</Link>
+      </Button>
     </div>
   )
 }

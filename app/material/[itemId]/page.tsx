@@ -51,6 +51,7 @@ export default async function MaterialPage({
         itemName={itemName}
         itemIcon={itemIcon}
         itemDescription={itemDescription}
+        showOwnershipControls
       />
     </main>
   )

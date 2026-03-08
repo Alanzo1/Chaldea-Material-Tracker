@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import { useEffect, useMemo, useState } from "react"
+import * as materialTracker from "@/lib/material-tracker"
 
 interface FarmingNode {
   id: number
@@ -24,6 +25,7 @@ interface MaterialFarmingCardProps {
   itemName: string
   itemIcon: string
   itemDescription?: string
+  showOwnershipControls?: boolean
   className?: string
 }
 
@@ -99,14 +101,29 @@ export default function MaterialFarmingCard({
   itemName,
   itemIcon,
   itemDescription,
+  showOwnershipControls = false,
   className,
 }: MaterialFarmingCardProps) {
   const [isLoading, setIsLoading] = useState(itemId !== 6999)
   const [nodes, setNodes] = useState<FarmingNode[]>([])
   const [errorMessage, setErrorMessage] = useState("")
+  const [ownedQuantity, setOwnedQuantity] = useState(0)
+  const [totalRequiredQuantity, setTotalRequiredQuantity] = useState(0)
 
   const isQP = useMemo(() => itemName.trim().toLowerCase() === "qp", [itemName])
   const isLore = itemId === 6999
+
+  useEffect(() => {
+    if (!showOwnershipControls || !itemId) return
+
+    const trackerState = materialTracker.readTrackedMaterialsState()
+    const aggregate = materialTracker.calculateAggregateRequirements(trackerState)
+    const material = aggregate.requiredMaterials.find((entry) => entry.id === itemId)
+    const owned = Number(trackerState.ownedByMaterialId[String(itemId)] ?? 0)
+
+    setOwnedQuantity(Number.isFinite(owned) ? Math.max(0, owned) : 0)
+    setTotalRequiredQuantity(material?.amount ?? 0)
+  }, [itemId, showOwnershipControls])
 
   useEffect(() => {
     let cancelled = false
@@ -155,6 +172,18 @@ export default function MaterialFarmingCard({
 
   if (isQP) return null
 
+  const remainingQuantity = Math.max(0, totalRequiredQuantity - ownedQuantity)
+  const ownedProgress = totalRequiredQuantity > 0
+    ? Math.min(100, (Math.max(0, ownedQuantity) / totalRequiredQuantity) * 100)
+    : 0
+
+  const handleOwnedChange = (nextValue: string) => {
+    const parsed = Number(nextValue)
+    const safeValue = Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0
+    setOwnedQuantity(safeValue)
+    materialTracker.setOwnedMaterialQuantity(itemId, safeValue)
+  }
+
   return (
     <section className={getContainerClassName(className)}>
       <header className="mb-4 flex items-center gap-3">
@@ -176,6 +205,34 @@ export default function MaterialFarmingCard({
           ) : null}
         </div>
       </header>
+      {showOwnershipControls ? (
+        <div className="mb-4 space-y-2 rounded-md border border-slate-700/70 p-3">
+          <div className="grid gap-2 sm:grid-cols-3">
+            <label className="space-y-1 text-xs text-slate-300">
+              Owned quantity
+              <input
+                type="number"
+                min={0}
+                value={ownedQuantity}
+                onChange={(event) => handleOwnedChange(event.target.value)}
+                className="w-full rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-sm"
+              />
+            </label>
+            <div className="text-xs text-slate-300">
+              <p>Total needed</p>
+              <p className="text-sm font-medium text-slate-100">{totalRequiredQuantity.toLocaleString()}</p>
+            </div>
+            <div className="text-xs text-slate-300">
+              <p>Remaining</p>
+              <p className="text-sm font-medium text-slate-100">{remainingQuantity.toLocaleString()}</p>
+            </div>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded bg-slate-700/80">
+            <div className="h-full rounded bg-emerald-400" style={{ width: `${ownedProgress}%` }} />
+          </div>
+          <p className="text-[11px] text-slate-400">Progress: {ownedProgress.toFixed(1)}%</p>
+        </div>
+      ) : null}
 
       {isLore ? (
         <p className="text-sm text-slate-300">

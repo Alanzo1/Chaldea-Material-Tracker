@@ -99,6 +99,10 @@ export default async function ServantPage({ params }: ServantPageProps) {
         name={servant.name}
         className={servant.className}
         rarity={servant.rarity}
+        portrait={servant.portrait ?? undefined}
+        ascensionMaterials={servant.raw?.ascensionMaterials ?? {}}
+        skillMaterials={servant.raw?.skillMaterials ?? {}}
+        appendSkillMaterials={servant.raw?.appendSkillMaterials ?? {}}
       />
       <section className="flex items-start gap-8">
         <div className="shrink-0">
