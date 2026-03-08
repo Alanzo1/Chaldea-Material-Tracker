@@ -43,6 +43,19 @@ function toArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : []
 }
 
+function sanitizeLabel(value: unknown) {
+  const normalized = String(value ?? "").trim()
+  if (!normalized) return ""
+  if (/^[-‐‑‒–—―ー－\s]+$/u.test(normalized)) return ""
+  return normalized
+}
+
+function pickPreferredLabel(primary: unknown, fallback: unknown) {
+  const normalizedPrimary = sanitizeLabel(primary)
+  if (normalizedPrimary) return normalizedPrimary
+  return sanitizeLabel(fallback)
+}
+
 function getTrainingGroundNodes(itemId: number): FarmingNode[] {
   const itemGroups = [
     [6001, 6007], // Gem of <Class>
@@ -89,7 +102,11 @@ function isPinnedTrainingNode(node: FarmingNode) {
 }
 
 function normalizeNode(node: FarmingNode): FarmingNode {
-  if (node.locationName && node.questTitle) {
+  const normalizedLocationName = sanitizeLabel(node.locationName)
+  const normalizedQuestTitle = sanitizeLabel(node.questTitle)
+  const normalizedWarName = sanitizeLabel(node.warName)
+
+  if (normalizedLocationName && normalizedQuestTitle) {
     return node
   }
 
@@ -98,17 +115,19 @@ function normalizeNode(node: FarmingNode): FarmingNode {
   if (separatorIndex < 0) {
     return {
       ...node,
-      questTitle: node.questTitle ?? rawQuestName,
-      locationName: node.locationName ?? "",
+      warName: normalizedWarName || undefined,
+      questTitle: normalizedQuestTitle || sanitizeLabel(rawQuestName),
+      locationName: normalizedLocationName || "",
     }
   }
 
-  const locationName = rawQuestName.slice(0, separatorIndex).trim()
-  const questTitle = rawQuestName.slice(separatorIndex + 3).trim()
+  const locationName = sanitizeLabel(rawQuestName.slice(0, separatorIndex))
+  const questTitle = sanitizeLabel(rawQuestName.slice(separatorIndex + 3))
   return {
     ...node,
-    locationName: node.locationName ?? locationName,
-    questTitle: node.questTitle ?? questTitle,
+    warName: normalizedWarName || undefined,
+    locationName: normalizedLocationName || locationName,
+    questTitle: normalizedQuestTitle || questTitle,
   }
 }
 
@@ -127,16 +146,16 @@ async function getQuestMetaById() {
         const questMetaById = new Map<number, QuestMeta>()
 
         for (const war of toArray<Record<string, unknown>>(wars)) {
-          const warName = String(war?.name ?? "").trim()
+          const warName = sanitizeLabel(war?.name) || sanitizeLabel(war?.longName)
           for (const spot of toArray<Record<string, unknown>>(war?.spots)) {
-            const locationName = String(spot?.name ?? "").trim()
+            const locationName = sanitizeLabel(spot?.name) || sanitizeLabel(spot?.longName)
             for (const quest of toArray<Record<string, unknown>>(spot?.quests)) {
               const questId = Number(quest?.id)
               if (!Number.isFinite(questId) || questId <= 0 || questMetaById.has(questId)) {
                 continue
               }
 
-              const questTitle = String(quest?.name ?? "").trim()
+              const questTitle = sanitizeLabel(quest?.name)
               questMetaById.set(questId, {
                 warName,
                 locationName,
@@ -165,9 +184,9 @@ function enrichWithQuestMeta(node: FarmingNode, questMetaById: Map<number, Quest
 
   return {
     ...node,
-    warName: node.warName || metadata.warName,
-    locationName: node.locationName || metadata.locationName,
-    questTitle: node.questTitle || metadata.questTitle,
+    warName: pickPreferredLabel(node.warName, metadata.warName) || undefined,
+    locationName: pickPreferredLabel(node.locationName, metadata.locationName) || undefined,
+    questTitle: pickPreferredLabel(node.questTitle, metadata.questTitle) || undefined,
   }
 }
 

@@ -55,12 +55,23 @@ function formatApPerDrop(value: number) {
   return `${value.toFixed(1)} AP/drop`
 }
 
+function sanitizeLabel(value: unknown) {
+  const normalized = String(value ?? "").trim()
+  if (!normalized) return ""
+  if (/^[-‐‑‒–—―ー－\s]+$/u.test(normalized)) return ""
+  return normalized
+}
+
 function getDisplayParts(node: FarmingNode) {
-  if (node.questTitle || node.locationName || node.warName) {
+  const warName = sanitizeLabel(node.warName)
+  const locationName = sanitizeLabel(node.locationName)
+  const questTitle = sanitizeLabel(node.questTitle)
+
+  if (questTitle || locationName || warName) {
     return {
-      questTitle: node.questTitle?.trim() || node.questName,
-      locationName: node.locationName?.trim() || "",
-      warName: node.warName?.trim() || "",
+      questTitle: questTitle || node.questName,
+      locationName,
+      warName,
     }
   }
 
@@ -71,8 +82,8 @@ function getDisplayParts(node: FarmingNode) {
   }
 
   return {
-    locationName: raw.slice(0, separatorIndex).trim(),
-    questTitle: raw.slice(separatorIndex + 3).trim(),
+    locationName: sanitizeLabel(raw.slice(0, separatorIndex)),
+    questTitle: sanitizeLabel(raw.slice(separatorIndex + 3)),
     warName: "",
   }
 }
