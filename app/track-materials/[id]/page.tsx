@@ -156,6 +156,18 @@ export default function TrackedServantDetailPage() {
       servantId: servant.servantId,
       ascensionLevel: nextAscension,
       skillLevels: nextSkills,
+      appendSkillLevels: servant.appendSkillLevels,
+    })
+    setState(nextState)
+  }
+
+  const handleUpdateAppendLevels = (nextAppendSkills: SkillLevels) => {
+    if (!servant) return
+    const nextState = updateTrackedServantLevels({
+      servantId: servant.servantId,
+      ascensionLevel: servant.ascensionLevel,
+      skillLevels: servant.skillLevels,
+      appendSkillLevels: nextAppendSkills,
     })
     setState(nextState)
   }
@@ -230,6 +242,28 @@ export default function TrackedServantDetailPage() {
                 }}
               >
                 {Array.from({ length: 10 }, (_, level) => level + 1).map((level) => (
+                  <option key={level} value={level}>
+                    {level}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2].map((index) => (
+            <div key={`append-${index}`} className="space-y-1">
+              <p className="text-sm font-medium">Append Skill {index + 1} Lv</p>
+              <select
+                className="w-full rounded-md border bg-background px-2 py-2 text-sm"
+                value={servant.appendSkillLevels[index]}
+                onChange={(event) => {
+                  const nextLevels = [...servant.appendSkillLevels] as SkillLevels
+                  nextLevels[index] = toNumber(event.target.value, 0)
+                  handleUpdateAppendLevels(nextLevels)
+                }}
+              >
+                {Array.from({ length: 11 }, (_, level) => level).map((level) => (
                   <option key={level} value={level}>
                     {level}
                   </option>
