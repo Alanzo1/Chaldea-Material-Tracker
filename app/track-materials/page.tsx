@@ -19,6 +19,12 @@ interface ServantIndexItem {
   portrait: string
 }
 
+interface MaterialIndexItem {
+  id: number
+  name: string
+  icon: string
+}
+
 interface EfficiencyLookup {
   [materialId: number]: number
 }
@@ -62,9 +68,13 @@ export default function TrackMaterialsPage() {
     ownedByMaterialId: {},
   })
   const [servantIndex, setServantIndex] = useState<ServantIndexItem[]>([])
+  const [materialIndex, setMaterialIndex] = useState<MaterialIndexItem[]>([])
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [addingServantId, setAddingServantId] = useState<number | null>(null)
+  const [isMaterialSearchOpen, setIsMaterialSearchOpen] = useState(false)
+  const [materialSearchQuery, setMaterialSearchQuery] = useState("")
+  const [pendingOwnedByMaterialId, setPendingOwnedByMaterialId] = useState<Record<number, string>>({})
   const [draggedServantId, setDraggedServantId] = useState<number | null>(null)
   const [efficiencyByMaterialId, setEfficiencyByMaterialId] = useState<EfficiencyLookup>({})
 
@@ -78,6 +88,15 @@ export default function TrackMaterialsPage() {
       })
       .catch(() => {
         setServantIndex([])
+      })
+
+    fetch("/api/atlas/materials-index", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((payload) => {
+        setMaterialIndex(Array.isArray(payload?.materials) ? payload.materials : [])
+      })
+      .catch(() => {
+        setMaterialIndex([])
       })
   }, [])
 
@@ -110,6 +129,20 @@ export default function TrackMaterialsPage() {
     () => aggregate.materialsWithOwned.filter((material) => material.remaining > 0),
     [aggregate.materialsWithOwned]
   )
+
+  const aggregateByMaterialId = useMemo(() => {
+    return new Map(aggregate.materialsWithOwned.map((material) => [material.id, material] as const))
+  }, [aggregate.materialsWithOwned])
+
+  const filteredMaterialResults = useMemo(() => {
+    const query = materialSearchQuery.trim().toLowerCase()
+    const base = materialIndex.length ? materialIndex : aggregate.materialsWithOwned
+    if (!query) return base.slice(0, 100)
+
+    return base
+      .filter((material) => String(material.name ?? "").toLowerCase().includes(query))
+      .slice(0, 100)
+  }, [aggregate.materialsWithOwned, materialIndex, materialSearchQuery])
 
   useEffect(() => {
     if (activeTab !== "farming" || !incompleteMaterials.length) return
@@ -185,6 +218,31 @@ export default function TrackMaterialsPage() {
     setTrackerState(nextState)
   }
 
+  const handleOpenMaterialSearch = () => {
+    const defaults: Record<number, string> = {}
+    const source = materialIndex.length ? materialIndex : aggregate.materialsWithOwned
+
+    source.forEach((material) => {
+      const owned = Number(trackerState.ownedByMaterialId[String(material.id)] ?? 0)
+      defaults[material.id] = String(Math.max(0, Number.isFinite(owned) ? owned : 0))
+    })
+    setPendingOwnedByMaterialId(defaults)
+    setMaterialSearchQuery("")
+    setIsMaterialSearchOpen(true)
+  }
+
+  const handleSaveOwnedQuantity = (materialId: number) => {
+    const raw = pendingOwnedByMaterialId[materialId] ?? "0"
+    const parsed = Number(raw)
+    const safeValue = Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0
+    const nextState = materialTracker.setOwnedMaterialQuantity(materialId, safeValue)
+    setTrackerState(nextState)
+    setPendingOwnedByMaterialId((prev) => ({
+      ...prev,
+      [materialId]: String(safeValue),
+    }))
+  }
+
   return (
     <main className="mx-auto flex max-w-7xl flex-col gap-6 px-6 py-10">
       <div className="flex flex-wrap items-center gap-3">
@@ -216,6 +274,9 @@ export default function TrackMaterialsPage() {
           onClick={() => setActiveTab("farming")}
         >
           Farming Summary
+        </Button>
+        <Button type="button" variant="outline" onClick={handleOpenMaterialSearch}>
+          Set Material Inventory
         </Button>
         </div>
       </header>
@@ -354,6 +415,80 @@ export default function TrackMaterialsPage() {
                   ))}
                   {!filteredSearchResults.length ? (
                     <p className="text-sm text-muted-foreground">No matching servants.</p>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {isMaterialSearchOpen ? (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+              <div className="w-full max-w-2xl space-y-4 rounded-xl border bg-card p-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold">Set Material Inventory</h2>
+                  <Button type="button" variant="ghost" onClick={() => setIsMaterialSearchOpen(false)}>
+                    Close
+                  </Button>
+                </div>
+                <Input
+                  placeholder="Search material name..."
+                  value={materialSearchQuery}
+                  onChange={(event) => setMaterialSearchQuery(event.target.value)}
+                />
+                <div className="max-h-[60vh] space-y-2 overflow-y-auto">
+                  {filteredMaterialResults.map((material) => (
+                    <div
+                      key={material.id}
+                      className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
+                    >
+                      {(() => {
+                        const aggregateMaterial = aggregateByMaterialId.get(material.id)
+                        const neededAmount = Number(aggregateMaterial?.amount ?? 0)
+                        const ownedAmount = Number(
+                          trackerState.ownedByMaterialId[String(material.id)] ?? 0
+                        )
+
+                        return (
+                          <>
+                            <div className="flex min-w-0 items-center gap-2">
+                              <Image
+                                src={material.icon}
+                                alt={material.name}
+                                width={20}
+                                height={20}
+                                className="rounded-sm"
+                              />
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium">{material.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Needed {neededAmount.toLocaleString()} · Owned {ownedAmount.toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                min={0}
+                                value={pendingOwnedByMaterialId[material.id] ?? ""}
+                                onChange={(event) =>
+                                  setPendingOwnedByMaterialId((prev) => ({
+                                    ...prev,
+                                    [material.id]: event.target.value,
+                                  }))
+                                }
+                                className="w-24"
+                              />
+                              <Button type="button" size="sm" onClick={() => handleSaveOwnedQuantity(material.id)}>
+                                Save
+                              </Button>
+                            </div>
+                          </>
+                        )
+                      })()}
+                    </div>
+                  ))}
+                  {!filteredMaterialResults.length ? (
+                    <p className="text-sm text-muted-foreground">No matching materials.</p>
                   ) : null}
                 </div>
               </div>
