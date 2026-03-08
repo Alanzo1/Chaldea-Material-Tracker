@@ -363,9 +363,16 @@ export default function TrackMaterialsPage() {
       ) : activeTab === "materials" ? (
         <section className="rounded-md border p-4">
           <h2 className="text-lg font-semibold">Total Materials Needed</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Open a material to edit owned quantity, remaining count, and progress.
+          </p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {aggregate.materialsWithOwned.map((material) => (
-              <div key={material.id} className="rounded-md border p-2">
+              <Link
+                key={material.id}
+                href={`/material/${material.id}?name=${encodeURIComponent(material.name)}&icon=${encodeURIComponent(material.icon)}&returnTo=${encodeURIComponent("/track-materials")}`}
+                className="block rounded-md border p-2 transition hover:bg-muted/40"
+              >
                 <div className="flex items-center gap-2">
                   <Image
                     src={material.icon}
@@ -380,7 +387,7 @@ export default function TrackMaterialsPage() {
                   Needed {material.amount.toLocaleString()} · Owned {material.owned.toLocaleString()} · Remaining{" "}
                   {material.remaining.toLocaleString()}
                 </p>
-              </div>
+              </Link>
             ))}
             {!aggregate.materialsWithOwned.length ? (
               <p className="text-sm text-muted-foreground">No materials needed yet.</p>

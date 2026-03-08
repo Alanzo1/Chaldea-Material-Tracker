@@ -7,6 +7,7 @@ import { useParams } from "next/navigation"
 
 import {
   readTrackedMaterialsState,
+  setOwnedMaterialQuantity,
   updateTrackedServantLevels,
   type SkillLevels,
   type TrackedMaterial,
@@ -169,6 +170,13 @@ export default function TrackedServantDetailPage() {
       skillLevels: servant.skillLevels,
       appendSkillLevels: nextAppendSkills,
     })
+    setState(nextState)
+  }
+
+  const handleOwnedQuantityChange = (materialId: number, value: string) => {
+    const parsed = Number(value)
+    const safeValue = Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0
+    const nextState = setOwnedMaterialQuantity(materialId, safeValue)
     setState(nextState)
   }
 
@@ -341,6 +349,16 @@ export default function TrackedServantDetailPage() {
                       <p className="mt-1 text-muted-foreground">
                         Need {material.amount} · Owned {material.owned} · Remaining {material.remaining}
                       </p>
+                      <label className="mt-1 block text-muted-foreground">
+                        Owned quantity
+                        <input
+                          type="number"
+                          min={0}
+                          value={material.owned}
+                          onChange={(event) => handleOwnedQuantityChange(material.id, event.target.value)}
+                          className="mt-1 w-full rounded-md border bg-background px-2 py-1 text-xs"
+                        />
+                      </label>
                     </div>
                   ))}
                   {!row.materials.length ? (
@@ -399,6 +417,16 @@ export default function TrackedServantDetailPage() {
                         <p className="mt-1 text-muted-foreground">
                           Need {material.amount} · Owned {material.owned} · Remaining {material.remaining}
                         </p>
+                        <label className="mt-1 block text-muted-foreground">
+                          Owned quantity
+                          <input
+                            type="number"
+                            min={0}
+                            value={material.owned}
+                            onChange={(event) => handleOwnedQuantityChange(material.id, event.target.value)}
+                            className="mt-1 w-full rounded-md border bg-background px-2 py-1 text-xs"
+                          />
+                        </label>
                       </div>
                     ))}
                     {!row.materials.length ? (
@@ -458,6 +486,16 @@ export default function TrackedServantDetailPage() {
                         <p className="mt-1 text-muted-foreground">
                           Need {material.amount} · Owned {material.owned} · Remaining {material.remaining}
                         </p>
+                        <label className="mt-1 block text-muted-foreground">
+                          Owned quantity
+                          <input
+                            type="number"
+                            min={0}
+                            value={material.owned}
+                            onChange={(event) => handleOwnedQuantityChange(material.id, event.target.value)}
+                            className="mt-1 w-full rounded-md border bg-background px-2 py-1 text-xs"
+                          />
+                        </label>
                       </div>
                     ))}
                     {!row.materials.length ? (
