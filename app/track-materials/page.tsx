@@ -2,8 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { useEffect, useMemo, useRef, useState } from "react"
-import type { ChangeEvent } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 
 import MaterialFarmingCard from "@/components/materials/MaterialFarmingCard"
@@ -49,7 +48,6 @@ function formatSkillLevels(levels: [number, number, number]) {
 
 export default function TrackMaterialsPage() {
   const router = useRouter()
-  const importInputRef = useRef<HTMLInputElement | null>(null)
 
   const [activeTab, setActiveTab] = useState<"tracker" | "farming">("tracker")
   const [trackerState, setTrackerState] = useState<TrackedMaterialsState>({
@@ -181,36 +179,6 @@ export default function TrackMaterialsPage() {
     setTrackerState(nextState)
   }
 
-  const handleExport = () => {
-    const payload = materialTracker.exportTrackedMaterialsState()
-    const blob = new Blob([payload], { type: "application/json" })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement("a")
-    anchor.href = url
-    anchor.download = "tracked-materials.json"
-    anchor.click()
-    URL.revokeObjectURL(url)
-  }
-
-  const handleImportClick = () => {
-    importInputRef.current?.click()
-  }
-
-  const handleImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    try {
-      const text = await file.text()
-      const nextState = materialTracker.importTrackedMaterialsState(text)
-      setTrackerState(nextState)
-    } catch {
-      // no-op
-    } finally {
-      event.target.value = ""
-    }
-  }
-
   return (
     <main className="mx-auto flex max-w-7xl flex-col gap-6 px-6 py-10">
       <div className="flex flex-wrap items-center gap-3">
@@ -235,25 +203,6 @@ export default function TrackMaterialsPage() {
 
       {activeTab === "tracker" ? (
         <>
-          <div className="flex flex-wrap gap-3">
-            <Button type="button" onClick={() => setIsSearchOpen(true)}>
-              Add Servant
-            </Button>
-            <Button type="button" variant="outline" onClick={handleExport}>
-              Export JSON
-            </Button>
-            <Button type="button" variant="outline" onClick={handleImportClick}>
-              Import JSON
-            </Button>
-            <input
-              ref={importInputRef}
-              type="file"
-              accept="application/json"
-              className="hidden"
-              onChange={handleImportFile}
-            />
-          </div>
-
           <div className="rounded-md border p-4">
             <p className="text-sm text-muted-foreground">
               Total tracked: {trackerState.servants.length} servant
