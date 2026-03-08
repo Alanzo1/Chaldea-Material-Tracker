@@ -46,10 +46,16 @@ function formatSkillLevels(levels: [number, number, number]) {
   return `${levels[0]}/${levels[1]}/${levels[2]}`
 }
 
+function getTabHeader(activeTab: "tracker" | "materials" | "farming") {
+  if (activeTab === "materials") return "Total Materials"
+  if (activeTab === "farming") return "Farming Summary"
+  return "Tracker"
+}
+
 export default function TrackMaterialsPage() {
   const router = useRouter()
 
-  const [activeTab, setActiveTab] = useState<"tracker" | "farming">("tracker")
+  const [activeTab, setActiveTab] = useState<"tracker" | "materials" | "farming">("tracker")
   const [trackerState, setTrackerState] = useState<TrackedMaterialsState>({
     version: 1,
     servants: [],
@@ -185,6 +191,11 @@ export default function TrackMaterialsPage() {
         <Button asChild variant="outline">
           <Link href="/">Back to Homepage</Link>
         </Button>
+      </div>
+
+      <header className="rounded-md border p-4">
+        <h1 className="text-2xl font-semibold">{getTabHeader(activeTab)}</h1>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
         <Button
           type="button"
           variant={activeTab === "tracker" ? "default" : "outline"}
@@ -194,12 +205,20 @@ export default function TrackMaterialsPage() {
         </Button>
         <Button
           type="button"
+          variant={activeTab === "materials" ? "default" : "outline"}
+          onClick={() => setActiveTab("materials")}
+        >
+          Total Materials
+        </Button>
+        <Button
+          type="button"
           variant={activeTab === "farming" ? "default" : "outline"}
           onClick={() => setActiveTab("farming")}
         >
           Farming Summary
         </Button>
-      </div>
+        </div>
+      </header>
 
       {activeTab === "tracker" ? (
         <>
@@ -268,7 +287,7 @@ export default function TrackMaterialsPage() {
                           </span>
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Ascension {servant.ascensionLevel >= 5 ? "Max" : `Lv ${servant.ascensionLevel}`} · Skills {formatSkillLevels(servant.skillLevels)}
+                          Ascension {servant.ascensionLevel >= 5 ? "Max" : `Lv ${servant.ascensionLevel}`} · Skills {formatSkillLevels(servant.skillLevels)} · Append Skills {formatSkillLevels(servant.appendSkillLevels)}
                         </p>
                       </div>
                     </div>
@@ -303,33 +322,6 @@ export default function TrackMaterialsPage() {
               <p className="text-sm text-muted-foreground">No tracked servants yet.</p>
             ) : null}
           </div>
-
-          <section className="rounded-md border p-4">
-            <h2 className="text-lg font-semibold">Total Materials Needed</h2>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {aggregate.materialsWithOwned.map((material) => (
-                <div key={material.id} className="rounded-md border p-2">
-                  <div className="flex items-center gap-2">
-                    <Image
-                      src={material.icon}
-                      alt={material.name}
-                      width={24}
-                      height={24}
-                      className="rounded-sm"
-                    />
-                    <p className="text-sm font-medium">{material.name}</p>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Needed {material.amount.toLocaleString()} · Owned {material.owned.toLocaleString()} · Remaining{" "}
-                    {material.remaining.toLocaleString()}
-                  </p>
-                </div>
-              ))}
-              {!aggregate.materialsWithOwned.length ? (
-                <p className="text-sm text-muted-foreground">No materials needed yet.</p>
-              ) : null}
-            </div>
-          </section>
 
           {isSearchOpen ? (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -368,6 +360,33 @@ export default function TrackMaterialsPage() {
             </div>
           ) : null}
         </>
+      ) : activeTab === "materials" ? (
+        <section className="rounded-md border p-4">
+          <h2 className="text-lg font-semibold">Total Materials Needed</h2>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {aggregate.materialsWithOwned.map((material) => (
+              <div key={material.id} className="rounded-md border p-2">
+                <div className="flex items-center gap-2">
+                  <Image
+                    src={material.icon}
+                    alt={material.name}
+                    width={24}
+                    height={24}
+                    className="rounded-sm"
+                  />
+                  <p className="text-sm font-medium">{material.name}</p>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Needed {material.amount.toLocaleString()} · Owned {material.owned.toLocaleString()} · Remaining{" "}
+                  {material.remaining.toLocaleString()}
+                </p>
+              </div>
+            ))}
+            {!aggregate.materialsWithOwned.length ? (
+              <p className="text-sm text-muted-foreground">No materials needed yet.</p>
+            ) : null}
+          </div>
+        </section>
       ) : (
         <section className="space-y-4">
           <h1 className="text-2xl font-semibold">Farming Summary</h1>
