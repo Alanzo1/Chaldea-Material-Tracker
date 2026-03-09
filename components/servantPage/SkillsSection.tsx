@@ -198,6 +198,32 @@ function shouldHideLevelRow(label: string) {
   )
 }
 
+function isDemeritStateFunction(func: any, label: string) {
+  const normalizedLabel = label.toLowerCase()
+  if (normalizedLabel.includes("staying up late")) return true
+
+  const popupText = normalizeText(func?.funcPopupText).toLowerCase()
+  if (popupText.includes("demerit")) return true
+
+  const buffList = Array.isArray(func?.buffs) ? func.buffs : []
+  return buffList.some((buff: any) => {
+    const buffName = normalizeText(buff?.name).toLowerCase()
+    const buffDetail = normalizeText(buff?.detail).toLowerCase()
+    const buffVals = Array.isArray(buff?.vals) ? buff.vals : []
+
+    const hasNegativeEffectFlag = buffVals.some((value: any) =>
+      Number(value?.id) === 3005 || normalizeText(value?.name).toLowerCase() === "buffnegativeeffect"
+    )
+
+    return (
+      hasNegativeEffectFlag ||
+      buffName.includes("demerit") ||
+      buffDetail.includes("demerit") ||
+      buffDetail.includes("stun is applied after")
+    )
+  })
+}
+
 function getLevels(skill: SkillLike) {
   const cooldownLevels = Array.isArray(skill.coolDown)
     ? skill.coolDown.filter((value) => typeof value === "number")
@@ -232,6 +258,7 @@ function getRows(skill: SkillLike) {
   ;(skill.functions ?? []).forEach((func: any, funcIndex: number) => {
     const label = getFunctionLabel(func) || `Effect ${funcIndex + 1}`
     if (shouldHideLevelRow(label)) return
+    if (isDemeritStateFunction(func, label)) return
     const values = levels.map((_, index) => {
       const value = func?.svals?.[index]?.Value
       return formatLevelValue(label, value)
@@ -292,6 +319,7 @@ function getNPTableData(np: NoblePhantasmLike) {
   ;(np.functions ?? []).forEach((func: any, index: number) => {
     const rawLabel = getFunctionLabel(func) || `Effect ${index + 1}`
     if (shouldHideLevelRow(rawLabel)) return
+    if (isDemeritStateFunction(func, rawLabel)) return
 
     const label = formatNPEffectLabel(rawLabel)
     const icon = getFunctionIcon(func) || undefined
