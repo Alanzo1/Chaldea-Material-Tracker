@@ -1,5 +1,6 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import Link from "next/link"
 import Image from "next/image"
 import type { ReactNode } from "react"
@@ -8,11 +9,9 @@ import { useRouter } from "next/navigation"
 import { Boxes, Heart, Home, Pickaxe, Users } from "lucide-react"
 
 import { HEADER_ACTION_BUTTON_CLASS, HeaderActionLink } from "@/components/HeaderActionLink"
-import MaterialFarmingCard from "@/components/materials/MaterialFarmingCard"
 import { PageHeader } from "@/components/PageHeader"
 import * as materialTracker from "@/lib/material-tracker"
 import type { TrackedMaterialsState } from "@/lib/material-tracker"
-import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
 interface ServantIndexItem {
@@ -32,6 +31,20 @@ interface MaterialIndexItem {
 interface EfficiencyLookup {
   [materialId: number]: number
 }
+
+const MaterialFarmingCard = dynamic(() => import("@/components/materials/MaterialFarmingCard"), {
+  ssr: false,
+  loading: () => (
+    <div className="rounded-lg border border-border bg-card/70 p-4">
+      <p className="text-sm text-muted-foreground">Loading farming details...</p>
+    </div>
+  ),
+})
+
+const SetInventoryModal = dynamic(() => import("@/components/tracker/SetInventoryModal"), {
+  ssr: false,
+  loading: () => null,
+})
 
 const NUMBER_FORMATTER = new Intl.NumberFormat("en-US")
 function formatNumber(value: number) {
@@ -184,8 +197,6 @@ export default function TrackMaterialsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [addingServantId, setAddingServantId] = useState<number | null>(null)
   const [isMaterialSearchOpen, setIsMaterialSearchOpen] = useState(false)
-  const [materialSearchQuery, setMaterialSearchQuery] = useState("")
-  const [pendingOwnedByMaterialId, setPendingOwnedByMaterialId] = useState<Record<number, string>>({})
   const [draggedServantId, setDraggedServantId] = useState<number | null>(null)
   const [efficiencyByMaterialId, setEfficiencyByMaterialId] = useState<EfficiencyLookup>({})
   const [expandedFarmingMaterialIds, setExpandedFarmingMaterialIds] = useState<number[]>([])
@@ -231,11 +242,9 @@ export default function TrackMaterialsPage() {
     [aggregate.materialsWithOwned]
   )
   const filteredMaterialResults = useMemo(() => {
-    const query = materialSearchQuery.trim().toLowerCase()
     const base = materialIndex.length ? materialIndex : aggregate.materialsWithOwned
-    if (!query) return base.slice(0, 100)
-    return base.filter((m) => String(m.name ?? "").toLowerCase().includes(query)).slice(0, 100)
-  }, [aggregate.materialsWithOwned, materialIndex, materialSearchQuery])
+    return base.slice(0, 500)
+  }, [aggregate.materialsWithOwned, materialIndex])
 
   useEffect(() => {
     if (activeTab !== "farming" || !incompleteMaterials.length) return
@@ -287,11 +296,9 @@ export default function TrackMaterialsPage() {
 
   const handleRemoveServant = (servantId: number) => setTrackerState(materialTracker.removeTrackedServant(servantId))
 
-  const handleSaveOwnedQuantity = (materialId: number) => {
-    const raw = pendingOwnedByMaterialId[materialId] ?? String(trackerState.ownedByMaterialId[String(materialId)] ?? 0)
-    const safeValue = Math.max(0, Math.floor(Number.isFinite(Number(raw)) ? Number(raw) : 0))
+  const handleSaveOwnedQuantityValue = (materialId: number, rawValue: string) => {
+    const safeValue = Math.max(0, Math.floor(Number.isFinite(Number(rawValue)) ? Number(rawValue) : 0))
     setTrackerState(materialTracker.setOwnedMaterialQuantity(materialId, safeValue))
-    setPendingOwnedByMaterialId((prev) => ({ ...prev, [materialId]: String(safeValue) }))
   }
 
   const handleCurrentQpChange = (value: string) => {
@@ -334,7 +341,7 @@ export default function TrackMaterialsPage() {
             />
             <button
               type="button"
-              onClick={() => { setPendingOwnedByMaterialId({}); setMaterialSearchQuery(""); setIsMaterialSearchOpen(true) }}
+              onClick={() => setIsMaterialSearchOpen(true)}
               className={HEADER_ACTION_BUTTON_CLASS}
             >
               <svg className="size-3.5" fill="none" viewBox="0 0 16 16" stroke="currentColor" strokeWidth={1.75}>
@@ -615,61 +622,14 @@ export default function TrackMaterialsPage() {
 
       {/* ── Set Inventory modal ─────────────────────────────────────────────── */}
       {isMaterialSearchOpen && (
-        <Modal title="Set Material Inventory" onClose={() => setIsMaterialSearchOpen(false)}>
-          <input
-            autoFocus
-            placeholder="Search material name..."
-            value={materialSearchQuery}
-            onChange={(e) => setMaterialSearchQuery(e.target.value)}
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
-          />
-          {filteredMaterialResults.length ? (
-            <VirtualizedList
-              items={filteredMaterialResults}
-              itemHeight={78}
-              containerHeight={470}
-              className="mt-3 pr-1"
-              getKey={(material) => material.id}
-              renderItem={(material) => {
-                const agg = aggregateByMaterialId.get(material.id)
-                const neededAmount = Number(agg?.amount ?? 0)
-                const ownedAmount = Number(trackerState.ownedByMaterialId[String(material.id)] ?? 0)
-
-                return (
-                  <div className="pb-1.5">
-                    <div className="flex items-center gap-3 rounded-lg border border-border bg-background/50 px-3 py-2.5">
-                      <Image src={material.icon} alt={material.name} width={22} height={22} className="rounded-sm flex-shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-medium text-foreground/90">{material.name}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          Need {formatNumber(neededAmount)} · Owned {formatNumber(ownedAmount)}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <input
-                          type="number"
-                          min={0}
-                          value={pendingOwnedByMaterialId[material.id] ?? String(Math.max(0, ownedAmount))}
-                          onChange={(e) => setPendingOwnedByMaterialId((prev) => ({ ...prev, [material.id]: e.target.value }))}
-                          className="w-20 rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground focus:border-ring focus:outline-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleSaveOwnedQuantity(material.id)}
-                          className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[11px] font-medium text-amber-400 hover:border-amber-500/50 hover:bg-amber-500/15 transition-all"
-                        >
-                          Save
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )
-              }}
-            />
-          ) : (
-            <p className="py-4 text-center text-sm text-muted-foreground">No matching materials.</p>
-          )}
-        </Modal>
+        <SetInventoryModal
+          onClose={() => setIsMaterialSearchOpen(false)}
+          materials={filteredMaterialResults}
+          aggregateByMaterialId={aggregateByMaterialId}
+          ownedByMaterialId={trackerState.ownedByMaterialId}
+          onSave={handleSaveOwnedQuantityValue}
+          formatNumber={formatNumber}
+        />
       )}
     </main>
   )
