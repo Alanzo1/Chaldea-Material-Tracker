@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/PageHeader"
 import * as materialTracker from "@/lib/material-tracker"
 import type { TrackedMaterialsState } from "@/lib/material-tracker"
 import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 
 interface ServantIndexItem {
   id: number
@@ -83,6 +84,53 @@ function TabBar({
           {tab.label}
         </button>
       ))}
+    </div>
+  )
+}
+
+function VirtualizedList<T>({
+  items,
+  itemHeight,
+  containerHeight,
+  overscan = 5,
+  getKey,
+  renderItem,
+  className,
+}: {
+  items: T[]
+  itemHeight: number
+  containerHeight: number
+  overscan?: number
+  getKey: (item: T, index: number) => string | number
+  renderItem: (item: T, index: number) => ReactNode
+  className?: string
+}) {
+  const [scrollTop, setScrollTop] = useState(0)
+  const totalHeight = items.length * itemHeight
+  const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan)
+  const visibleCount = Math.ceil(containerHeight / itemHeight) + overscan * 2
+  const endIndex = Math.min(items.length, startIndex + visibleCount)
+  const offsetY = startIndex * itemHeight
+  const visibleItems = items.slice(startIndex, endIndex)
+
+  return (
+    <div
+      className={cn("overflow-y-auto", className)}
+      style={{ maxHeight: containerHeight }}
+      onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
+    >
+      <div className="relative w-full" style={{ height: totalHeight }}>
+        <div style={{ transform: `translateY(${offsetY}px)` }}>
+          {visibleItems.map((item, index) => {
+            const absoluteIndex = startIndex + index
+            return (
+              <div key={getKey(item, absoluteIndex)} style={{ height: itemHeight }}>
+                {renderItem(item, absoluteIndex)}
+              </div>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }
@@ -535,26 +583,33 @@ export default function TrackMaterialsPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
           />
-          <div className="mt-3 max-h-[52vh] space-y-1 overflow-y-auto pr-1">
-            {filteredSearchResults.map((servant) => (
-              <button
-                key={servant.id}
-                type="button"
-                onClick={() => handleAddServant(servant)}
-                disabled={addingServantId === servant.id}
-                className="flex w-full items-center justify-between rounded-lg border border-border bg-background/50 px-3 py-2.5 text-left transition-all hover:bg-muted/40 disabled:opacity-50"
-              >
-                <div>
-                  <p className="text-sm font-medium text-foreground/90">{servant.name}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{servant.className}</p>
+          {filteredSearchResults.length ? (
+            <VirtualizedList
+              items={filteredSearchResults}
+              itemHeight={68}
+              containerHeight={420}
+              className="mt-3 pr-1"
+              getKey={(servant) => servant.id}
+              renderItem={(servant) => (
+                <div className="pb-1">
+                  <button
+                    type="button"
+                    onClick={() => handleAddServant(servant)}
+                    disabled={addingServantId === servant.id}
+                    className="flex w-full items-center justify-between rounded-lg border border-border bg-background/50 px-3 py-2.5 text-left transition-all hover:bg-muted/40 disabled:opacity-50"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-foreground/90">{servant.name}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{servant.className}</p>
+                    </div>
+                    <span className={`text-sm ${getStarColorClass(servant.rarity)}`}>{"★".repeat(servant.rarity)}</span>
+                  </button>
                 </div>
-                <span className={`text-sm ${getStarColorClass(servant.rarity)}`}>{"★".repeat(servant.rarity)}</span>
-              </button>
-            ))}
-            {!filteredSearchResults.length && (
-              <p className="py-4 text-center text-sm text-muted-foreground">No matching servants.</p>
-            )}
-          </div>
+              )}
+            />
+          ) : (
+            <p className="py-4 text-center text-sm text-muted-foreground">No matching servants.</p>
+          )}
         </Modal>
       )}
 
@@ -568,44 +623,52 @@ export default function TrackMaterialsPage() {
             onChange={(e) => setMaterialSearchQuery(e.target.value)}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
           />
-          <div className="mt-3 max-h-[58vh] space-y-1.5 overflow-y-auto pr-1">
-            {filteredMaterialResults.map((material) => {
-              const agg = aggregateByMaterialId.get(material.id)
-              const neededAmount = Number(agg?.amount ?? 0)
-              const ownedAmount = Number(trackerState.ownedByMaterialId[String(material.id)] ?? 0)
+          {filteredMaterialResults.length ? (
+            <VirtualizedList
+              items={filteredMaterialResults}
+              itemHeight={78}
+              containerHeight={470}
+              className="mt-3 pr-1"
+              getKey={(material) => material.id}
+              renderItem={(material) => {
+                const agg = aggregateByMaterialId.get(material.id)
+                const neededAmount = Number(agg?.amount ?? 0)
+                const ownedAmount = Number(trackerState.ownedByMaterialId[String(material.id)] ?? 0)
 
-              return (
-                <div key={material.id} className="flex items-center gap-3 rounded-lg border border-border bg-background/50 px-3 py-2.5">
-                  <Image src={material.icon} alt={material.name} width={22} height={22} className="rounded-sm flex-shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium text-foreground/90">{material.name}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      Need {formatNumber(neededAmount)} · Owned {formatNumber(ownedAmount)}
-                    </p>
+                return (
+                  <div className="pb-1.5">
+                    <div className="flex items-center gap-3 rounded-lg border border-border bg-background/50 px-3 py-2.5">
+                      <Image src={material.icon} alt={material.name} width={22} height={22} className="rounded-sm flex-shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-medium text-foreground/90">{material.name}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          Need {formatNumber(neededAmount)} · Owned {formatNumber(ownedAmount)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <input
+                          type="number"
+                          min={0}
+                          value={pendingOwnedByMaterialId[material.id] ?? String(Math.max(0, ownedAmount))}
+                          onChange={(e) => setPendingOwnedByMaterialId((prev) => ({ ...prev, [material.id]: e.target.value }))}
+                          className="w-20 rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground focus:border-ring focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleSaveOwnedQuantity(material.id)}
+                          className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[11px] font-medium text-amber-400 hover:border-amber-500/50 hover:bg-amber-500/15 transition-all"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <input
-                      type="number"
-                      min={0}
-                      value={pendingOwnedByMaterialId[material.id] ?? String(Math.max(0, ownedAmount))}
-                      onChange={(e) => setPendingOwnedByMaterialId((prev) => ({ ...prev, [material.id]: e.target.value }))}
-                      className="w-20 rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground focus:border-ring focus:outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleSaveOwnedQuantity(material.id)}
-                      className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[11px] font-medium text-amber-400 hover:border-amber-500/50 hover:bg-amber-500/15 transition-all"
-                    >
-                      Save
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-            {!filteredMaterialResults.length && (
-              <p className="py-4 text-center text-sm text-muted-foreground">No matching materials.</p>
-            )}
-          </div>
+                )
+              }}
+            />
+          ) : (
+            <p className="py-4 text-center text-sm text-muted-foreground">No matching materials.</p>
+          )}
         </Modal>
       )}
     </main>
