@@ -1,4 +1,5 @@
 const TRACKED_MATERIALS_STATE_KEY = "trackedMaterialsStateV1"
+const PERSIST_DEBOUNCE_MS = 120
 
 interface MaterialItemLike {
   amount?: number
@@ -57,6 +58,9 @@ export interface RequirementTotals {
   progressPercent: number
 }
 
+let inMemoryState: TrackedMaterialsState | null = null
+let persistTimer: ReturnType<typeof setTimeout> | null = null
+
 function readJson<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback
   try {
@@ -71,6 +75,21 @@ function readJson<T>(key: string, fallback: T): T {
 function writeJson<T>(key: string, value: T) {
   if (typeof window === "undefined") return
   window.localStorage.setItem(key, JSON.stringify(value))
+}
+
+function persistStateNow() {
+  if (typeof window === "undefined" || !inMemoryState) return
+  writeJson(TRACKED_MATERIALS_STATE_KEY, inMemoryState)
+}
+
+function schedulePersist() {
+  if (typeof window === "undefined") return
+  if (persistTimer) return
+
+  persistTimer = setTimeout(() => {
+    persistTimer = null
+    persistStateNow()
+  }, PERSIST_DEBOUNCE_MS)
 }
 
 function toNumber(value: unknown, fallback = 0) {
@@ -141,24 +160,32 @@ function createDefaultState(): TrackedMaterialsState {
 }
 
 export function readTrackedMaterialsState() {
+  if (inMemoryState) return inMemoryState
+
   const rawState = readJson<unknown>(TRACKED_MATERIALS_STATE_KEY, createDefaultState())
 
-  if (!rawState || typeof rawState !== "object") return createDefaultState()
+  if (!rawState || typeof rawState !== "object") {
+    inMemoryState = createDefaultState()
+    return inMemoryState
+  }
 
   const record = rawState as Record<string, unknown>
   const servants = Array.isArray(record.servants)
     ? record.servants.map(normalizeServantEntry).filter(Boolean) as TrackedServantEntry[]
     : []
 
-  return {
+  inMemoryState = {
     version: 1 as const,
     servants: servants.sort((a, b) => a.servantName.localeCompare(b.servantName)),
     ownedByMaterialId: normalizeOwnedMap(record.ownedByMaterialId),
   }
+
+  return inMemoryState
 }
 
 export function writeTrackedMaterialsState(state: TrackedMaterialsState) {
-  writeJson(TRACKED_MATERIALS_STATE_KEY, state)
+  inMemoryState = state
+  schedulePersist()
 }
 
 export function upsertTrackedServant(entry: TrackedServantEntry) {
@@ -421,6 +448,11 @@ export function importTrackedMaterialsState(payload: string) {
       : [],
     ownedByMaterialId: normalizeOwnedMap(parsed?.ownedByMaterialId),
   }
-  writeTrackedMaterialsState(nextState)
+  inMemoryState = nextState
+  if (persistTimer) {
+    clearTimeout(persistTimer)
+    persistTimer = null
+  }
+  persistStateNow()
   return nextState
 }
