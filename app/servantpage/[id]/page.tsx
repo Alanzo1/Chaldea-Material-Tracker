@@ -6,6 +6,7 @@ import { ServantHeaderCard } from "@/components/servantPage/ServantHeaderCard"
 import { ServantMetaCard } from "@/components/servantPage/ServantMetaCard"
 import { SkillsSection } from "@/components/servantPage/SkillsSection"
 import { ServantStatsCard } from "@/components/servantPage/ServantStatsCard"
+import { PageHeader } from "@/components/PageHeader"
 import { Button } from "@/components/ui/button"
 
 const CARD_LABELS: Record<string, string> = {
@@ -88,49 +89,80 @@ export default async function ServantPage({ params }: ServantPageProps) {
     .map((trait: string) => toTitleCase(trait.replace(/^alignment/, "")))
 
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10">
-      <div>
-        <Button asChild variant="outline">
-          <Link href="/">Back to Homepage</Link>
-        </Button>
+    <main className="pb-10">
+      <PageHeader
+        title={servant.name}
+        subtitle={`${toTitleCase(servant.className)} · ${"★".repeat(Number(servant.rarity ?? 0))}`}
+        actions={
+          <>
+            <Button
+              asChild
+              className="h-9 rounded-md border-border bg-card px-3.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground"
+              variant="outline"
+            >
+              <Link href="/">Homepage</Link>
+            </Button>
+            <Button
+              asChild
+              className="h-9 rounded-md border-border bg-card px-3.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground"
+              variant="outline"
+            >
+              <Link href="/favorites">Favorites</Link>
+            </Button>
+            <Button
+              asChild
+              className="h-9 rounded-md border-border bg-card px-3.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground"
+              variant="outline"
+            >
+              <Link href="/track-materials">Tracker</Link>
+            </Button>
+          </>
+        }
+      />
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 pt-6">
+        <div>
+          <Button asChild variant="outline">
+            <Link href="/">Back to Homepage</Link>
+          </Button>
+        </div>
+        <ServantHeaderCard
+          servantId={Number(servant.id)}
+          name={servant.name}
+          className={servant.className}
+          rarity={servant.rarity}
+          portrait={servant.portrait ?? undefined}
+          ascensionMaterials={servant.raw?.ascensionMaterials ?? {}}
+          skillMaterials={servant.raw?.skillMaterials ?? {}}
+          appendSkillMaterials={servant.raw?.appendSkillMaterials ?? {}}
+        />
+        <section className="flex items-start gap-8">
+          <div className="shrink-0">
+            <ServantArtCard name={servant.name} options={artOptions} />
+          </div>
+          <div className="min-w-0 flex-1 space-y-6">
+            <ServantStatsCard
+              maxHp={Number(servant.raw?.hpMax ?? 0)}
+              maxAtk={Number(servant.raw?.atkMax ?? 0)}
+              deck={deck}
+            />
+            <ServantMetaCard
+              traits={visibleTraits}
+              attribute={String(servant.raw?.attribute ?? "")}
+              alignments={alignments}
+            />
+          </div>
+        </section>
+        <SkillsSection
+          skills={servant.raw?.skills ?? []}
+          noblePhantasms={servant.raw?.noblePhantasms ?? []}
+          appendPassive={servant.raw?.appendPassive ?? []}
+          classPassive={servant.raw?.classPassive ?? []}
+          ascensionMaterials={servant.raw?.ascensionMaterials ?? {}}
+          skillMaterials={servant.raw?.skillMaterials ?? {}}
+          appendSkillMaterials={servant.raw?.appendSkillMaterials ?? {}}
+          costumeMaterials={servant.raw?.costumeMaterials ?? {}}
+        />
       </div>
-      <ServantHeaderCard
-        servantId={Number(servant.id)}
-        name={servant.name}
-        className={servant.className}
-        rarity={servant.rarity}
-        portrait={servant.portrait ?? undefined}
-        ascensionMaterials={servant.raw?.ascensionMaterials ?? {}}
-        skillMaterials={servant.raw?.skillMaterials ?? {}}
-        appendSkillMaterials={servant.raw?.appendSkillMaterials ?? {}}
-      />
-      <section className="flex items-start gap-8">
-        <div className="shrink-0">
-          <ServantArtCard name={servant.name} options={artOptions} />
-        </div>
-        <div className="min-w-0 flex-1 space-y-6">
-          <ServantStatsCard
-            maxHp={Number(servant.raw?.hpMax ?? 0)}
-            maxAtk={Number(servant.raw?.atkMax ?? 0)}
-            deck={deck}
-          />
-          <ServantMetaCard
-            traits={visibleTraits}
-            attribute={String(servant.raw?.attribute ?? "")}
-            alignments={alignments}
-          />
-        </div>
-      </section>
-      <SkillsSection
-        skills={servant.raw?.skills ?? []}
-        noblePhantasms={servant.raw?.noblePhantasms ?? []}
-        appendPassive={servant.raw?.appendPassive ?? []}
-        classPassive={servant.raw?.classPassive ?? []}
-        ascensionMaterials={servant.raw?.ascensionMaterials ?? {}}
-        skillMaterials={servant.raw?.skillMaterials ?? {}}
-        appendSkillMaterials={servant.raw?.appendSkillMaterials ?? {}}
-        costumeMaterials={servant.raw?.costumeMaterials ?? {}}
-      />
     </main>
   )
 }

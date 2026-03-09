@@ -14,6 +14,7 @@ import {
   type TrackedServantEntry,
   type TrackedMaterialsState,
 } from "@/lib/material-tracker"
+import { PageHeader } from "@/components/PageHeader"
 import { Button } from "@/components/ui/button"
 
 interface StageProgressRow {
@@ -37,7 +38,7 @@ function toNumber(value: unknown, fallback = 0) {
 function getStarColorClass(rarity: number) {
   if (rarity <= 2) return "text-amber-700"
   if (rarity === 3) return "text-slate-400"
-  return "text-yellow-500"
+  return "text-yellow-400"
 }
 
 function buildStageProgressRows(
@@ -89,6 +90,158 @@ function buildStageProgressRows(
   return rows
 }
 
+// ─── Tab config ──────────────────────────────────────────────────────────────
+const PROGRESS_TABS = [
+  { key: "ascension",    label: "Ascension",     color: "amber"  },
+  { key: "skills",       label: "Skills",         color: "sky"    },
+  { key: "appendSkills", label: "Append Skills",  color: "violet" },
+] as const
+
+type ProgressTab = (typeof PROGRESS_TABS)[number]["key"]
+
+const TAB_COLORS: Record<string, { active: string; bar: string; border: string }> = {
+  amber:  { active: "border-amber-500/60 bg-amber-500/10 text-amber-400",  bar: "bg-amber-500",  border: "border-amber-500/20" },
+  sky:    { active: "border-sky-500/60 bg-sky-500/10 text-sky-400",        bar: "bg-sky-500",    border: "border-sky-500/20"   },
+  violet: { active: "border-violet-500/60 bg-violet-500/10 text-violet-400", bar: "bg-violet-500", border: "border-violet-500/20" },
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function StageProgressCard({
+  row,
+  barColor,
+  borderColor,
+  onOwnedChange,
+}: {
+  row: StageProgressRow
+  barColor: string
+  borderColor: string
+  onOwnedChange: (id: number, value: string) => void
+}) {
+  return (
+    <div className={`rounded-xl border ${borderColor} bg-white/[0.03] p-4`}>
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-white/90">{row.label}</p>
+        <div className="flex items-center gap-3 text-[11px] text-white/35">
+          <span>QP: {formatNumber(row.qp)}</span>
+          <span className="font-medium text-white/50">{row.progressPercent.toFixed(1)}%</span>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-white/8">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+          style={{ width: `${row.progressPercent}%` }}
+        />
+      </div>
+
+      {/* Materials grid */}
+      {row.materials.length > 0 ? (
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {row.materials.map((material) => (
+            <div
+              key={`${row.label}-${material.id}`}
+              className="rounded-lg border border-white/8 bg-black/20 p-2.5"
+            >
+              <div className="flex items-center gap-2">
+                <Image
+                  src={material.icon}
+                  alt={material.name}
+                  width={24}
+                  height={24}
+                  className="rounded-sm"
+                />
+                <span className="text-xs font-medium text-white/80 leading-tight">{material.name}</span>
+              </div>
+
+              <div className="mt-2 flex items-center gap-1 text-[10px] text-white/30">
+                <span>Need <span className="text-white/50">{material.amount}</span></span>
+                <span>·</span>
+                <span>Remaining <span className={material.remaining > 0 ? "text-red-400/70" : "text-emerald-400/70"}>{material.remaining}</span></span>
+              </div>
+
+              <div className="mt-2">
+                <input
+                  type="number"
+                  min={0}
+                  value={material.owned}
+                  onChange={(e) => onOwnedChange(material.id, e.target.value)}
+                  className="w-full rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/80 placeholder:text-white/20 focus:border-white/20 focus:outline-none focus:ring-0"
+                  placeholder="Owned"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 text-xs text-white/25">No materials for this stage.</p>
+      )}
+    </div>
+  )
+}
+
+function TabBar({
+  tabs,
+  active,
+  onChange,
+}: {
+  tabs: { key: string; label: string }[]
+  active: string
+  onChange: (key: string) => void
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {tabs.map((tab) => (
+        <button
+          key={tab.key}
+          type="button"
+          onClick={() => onChange(tab.key)}
+          className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-all ${
+            active === tab.key
+              ? "border-white/20 bg-white/10 text-white"
+              : "border-white/8 bg-transparent text-white/35 hover:border-white/15 hover:text-white/60"
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function LevelSelect({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  value: number
+  options: { value: number; label: string }[]
+  onChange: (value: number) => void
+}) {
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">{label}</p>
+      <select
+        className="w-full rounded-md border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white/80 focus:border-white/20 focus:outline-none"
+        value={value}
+        onChange={(e) => onChange(toNumber(e.target.value, 1))}
+      >
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value} className="bg-[#0f0d12]">
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function TrackedServantDetailPage() {
   const params = useParams<{ id: string }>()
   const servantId = toNumber(params?.id, 0)
@@ -98,18 +251,12 @@ export default function TrackedServantDetailPage() {
     servants: [],
     ownedByMaterialId: {},
   })
-  const [activeProgressTab, setActiveProgressTab] = useState<"ascension" | "skills" | "appendSkills">("ascension")
+  const [activeProgressTab, setActiveProgressTab] = useState<ProgressTab>("ascension")
   const [activeSkillTab, setActiveSkillTab] = useState(0)
   const [activeAppendSkillTab, setActiveAppendSkillTab] = useState(0)
 
-  useEffect(() => {
-    setState(readTrackedMaterialsState())
-  }, [])
-
-  useEffect(() => {
-    setActiveSkillTab(0)
-    setActiveAppendSkillTab(0)
-  }, [servantId])
+  useEffect(() => { setState(readTrackedMaterialsState()) }, [])
+  useEffect(() => { setActiveSkillTab(0); setActiveAppendSkillTab(0) }, [servantId])
 
   const servant = useMemo(
     () => state.servants.find((entry) => entry.servantId === servantId) ?? null,
@@ -120,403 +267,250 @@ export default function TrackedServantDetailPage() {
     if (!servant) return []
     return buildStageProgressRows(
       servant.ascensionMaterials,
-      (stageNumber) => (stageNumber >= Math.max(0, servant.ascensionLevel - 1) ? 1 : 0),
-      (stageNumber) => `Ascension ${stageNumber + 1}`,
+      (n) => (n >= Math.max(0, servant.ascensionLevel - 1) ? 1 : 0),
+      (n) => `Ascension ${n + 1}`,
       state.ownedByMaterialId
     )
   }, [servant, state.ownedByMaterialId])
 
   const skillRowsBySkill = useMemo(() => {
     if (!servant) return [[], [], []] as StageProgressRow[][]
-
-    return [0, 1, 2].map((skillIndex) =>
+    return [0, 1, 2].map((i) =>
       buildStageProgressRows(
         servant.skillMaterials,
-        (stageNumber) => (stageNumber >= Math.max(1, servant.skillLevels[skillIndex]) ? 1 : 0),
-        (stageNumber) => `Skill Lv ${stageNumber} → ${stageNumber + 1}`,
+        (n) => (n >= Math.max(1, servant.skillLevels[i]) ? 1 : 0),
+        (n) => `Skill Lv ${n} → ${n + 1}`,
+        state.ownedByMaterialId
+      )
+    )
+  }, [servant, state.ownedByMaterialId])
+
+  const appendSkillRowsBySkill = useMemo(() => {
+    if (!servant) return [[], [], []] as StageProgressRow[][]
+    return [0, 1, 2].map((i) =>
+      buildStageProgressRows(
+        servant.appendSkillMaterials,
+        (n) => (n >= Math.max(1, servant.appendSkillLevels[i]) ? 1 : 0),
+        (n) => `Append Skill Lv ${n} → ${n + 1}`,
         state.ownedByMaterialId
       )
     )
   }, [servant, state.ownedByMaterialId])
 
   const activeSkillRows = skillRowsBySkill[activeSkillTab] ?? []
-
-  const appendSkillRowsBySkill = useMemo(() => {
-    if (!servant) return [[], [], []] as StageProgressRow[][]
-
-    return [0, 1, 2].map((skillIndex) =>
-      buildStageProgressRows(
-        servant.appendSkillMaterials,
-        (stageNumber) =>
-          stageNumber >= Math.max(1, servant.appendSkillLevels[skillIndex]) ? 1 : 0,
-        (stageNumber) => `Append Skill Lv ${stageNumber} → ${stageNumber + 1}`,
-        state.ownedByMaterialId
-      )
-    )
-  }, [servant, state.ownedByMaterialId])
-
   const activeAppendSkillRows = appendSkillRowsBySkill[activeAppendSkillTab] ?? []
 
   const handleUpdateLevels = (nextAscension: number, nextSkills: SkillLevels) => {
     if (!servant) return
-    const nextState = updateTrackedServantLevels({
+    setState(updateTrackedServantLevels({
       servantId: servant.servantId,
       ascensionLevel: nextAscension,
       skillLevels: nextSkills,
       appendSkillLevels: servant.appendSkillLevels,
-    })
-    setState(nextState)
+    }))
   }
 
   const handleUpdateAppendLevels = (nextAppendSkills: SkillLevels) => {
     if (!servant) return
-    const nextState = updateTrackedServantLevels({
+    setState(updateTrackedServantLevels({
       servantId: servant.servantId,
       ascensionLevel: servant.ascensionLevel,
       skillLevels: servant.skillLevels,
       appendSkillLevels: nextAppendSkills,
-    })
-    setState(nextState)
+    }))
   }
 
   const handleOwnedQuantityChange = (materialId: number, value: string) => {
     const parsed = Number(value)
     const safeValue = Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0
-    const nextState = setOwnedMaterialQuantity(materialId, safeValue)
-    setState(nextState)
+    setState(setOwnedMaterialQuantity(materialId, safeValue))
   }
 
+  // ─── Active progress tab data ───────────────────────────────────────────────
+  const activeTabConfig = PROGRESS_TABS.find((t) => t.key === activeProgressTab)!
+  const colors = TAB_COLORS[activeTabConfig.color]
+
+  const activeRows =
+    activeProgressTab === "ascension"
+      ? ascensionRows
+      : activeProgressTab === "skills"
+      ? activeSkillRows
+      : activeAppendSkillRows
+
+  const emptyLabel =
+    activeProgressTab === "ascension"
+      ? "No ascension materials selected."
+      : activeProgressTab === "skills"
+      ? "No skill materials selected."
+      : "No append skill materials selected."
+
+  // ─── Not found ─────────────────────────────────────────────────────────────
   if (!servant) {
     return (
-      <main className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-10">
-        <Button asChild variant="outline">
-          <Link href="/track-materials">Back to Tracker</Link>
-        </Button>
-        <p className="text-sm text-muted-foreground">Tracked servant not found.</p>
+      <main className="min-h-screen bg-background pb-16">
+        <PageHeader
+          title="Tracked Servant"
+          subtitle="Servant not found."
+          actions={
+            <Button
+              asChild
+              className="h-9 rounded-md border-border bg-card px-3.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground"
+              variant="outline"
+            >
+              <Link href="/track-materials">Back to Tracker</Link>
+            </Button>
+          }
+        />
+        <div className="mx-auto max-w-5xl px-6 pt-8">
+          <p className="text-sm text-white/30">Tracked servant not found.</p>
+        </div>
       </main>
     )
   }
 
+  // ─── Main ──────────────────────────────────────────────────────────────────
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-10">
-      <div>
-        <Button asChild variant="outline">
-          <Link href="/track-materials">Back to Tracker</Link>
-        </Button>
-      </div>
+    <main className="min-h-screen bg-background pb-16">
 
-      <section className="rounded-md border p-4">
-        <div className="flex items-center gap-3">
-          {servant.portrait ? (
-            <Image
-              src={servant.portrait}
-              alt={servant.servantName}
-              width={64}
-              height={64}
-              className="rounded-md"
-            />
-          ) : null}
-          <div>
-            <h1 className="text-2xl font-semibold">{servant.servantName}</h1>
-            <p className="text-sm text-muted-foreground">
-              {servant.className} ·{" "}
-              <span className={getStarColorClass(servant.rarity)}>
-                {"★".repeat(servant.rarity)}
-              </span>
-            </p>
-          </div>
-        </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="space-y-1">
-            <p className="text-sm font-medium">Ascension Lv</p>
-            <select
-              className="w-full rounded-md border bg-background px-2 py-2 text-sm"
-              value={servant.ascensionLevel}
-              onChange={(event) =>
-                handleUpdateLevels(toNumber(event.target.value, 1), servant.skillLevels)
-              }
+      {/* Ambient gradient */}
+      <div className="pointer-events-none fixed inset-0 bg-gradient-to-br from-amber-950/10 via-transparent to-violet-950/10" />
+
+      <PageHeader
+        title={servant.servantName}
+        subtitle={`${servant.className} · ${"★".repeat(servant.rarity)}`}
+        actions={
+          <>
+            <Button
+              asChild
+              className="h-9 rounded-md border-border bg-card px-3.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground"
+              variant="outline"
             >
-              <option value={1}>1</option>
-              <option value={2}>2</option>
-              <option value={3}>3</option>
-              <option value={4}>4</option>
-              <option value={5}>Max</option>
-            </select>
+              <Link href="/track-materials">Tracker</Link>
+            </Button>
+            <Button
+              asChild
+              className="h-9 rounded-md border-border bg-card px-3.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground"
+              variant="outline"
+            >
+              <Link href="/">Home</Link>
+            </Button>
+          </>
+        }
+      />
+
+      <div className="relative mx-auto flex max-w-6xl flex-col gap-5 px-5 pt-6 md:px-8">
+
+        {/* ── Target Levels card ─────────────────────────────────────────── */}
+        <section className="rounded-xl border border-white/8 bg-white/[0.025] p-5">
+          {/* Servant identity */}
+          <div className="flex items-center gap-4 border-b border-white/8 pb-4">
+            {servant.portrait && (
+              <Image
+                src={servant.portrait}
+                alt={servant.servantName}
+                width={56}
+                height={56}
+                className="rounded-lg border border-white/10"
+              />
+            )}
+            <div>
+              <h2 className="text-base font-semibold text-white/90">Target Levels</h2>
+              <p className="mt-0.5 text-xs text-white/40">
+                {servant.className}{" "}
+                <span className={getStarColorClass(servant.rarity)}>
+                  {"★".repeat(servant.rarity)}
+                </span>
+              </p>
+            </div>
           </div>
-          {[0, 1, 2].map((index) => (
-            <div key={index} className="space-y-1">
-              <p className="text-sm font-medium">Skill {index + 1} Lv</p>
-              <select
-                className="w-full rounded-md border bg-background px-2 py-2 text-sm"
-                value={servant.skillLevels[index]}
-                onChange={(event) => {
-                  const nextLevels = [...servant.skillLevels] as SkillLevels
-                  nextLevels[index] = toNumber(event.target.value, 1)
-                  handleUpdateLevels(servant.ascensionLevel, nextLevels)
-                }}
-              >
-                {Array.from({ length: 10 }, (_, level) => level + 1).map((level) => (
-                  <option key={level} value={level}>
-                    {level}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ))}
-        </div>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {[0, 1, 2].map((index) => (
-            <div key={`append-${index}`} className="space-y-1">
-              <p className="text-sm font-medium">Append Skill {index + 1} Lv</p>
-              <select
-                className="w-full rounded-md border bg-background px-2 py-2 text-sm"
-                value={servant.appendSkillLevels[index]}
-                onChange={(event) => {
-                  const nextLevels = [...servant.appendSkillLevels] as SkillLevels
-                  nextLevels[index] = toNumber(event.target.value, 0)
-                  handleUpdateAppendLevels(nextLevels)
-                }}
-              >
-                {Array.from({ length: 11 }, (_, level) => level).map((level) => (
-                  <option key={level} value={level}>
-                    {level}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ))}
-        </div>
-      </section>
 
-      <section className="rounded-md border p-4">
-        <h2 className="text-lg font-semibold">Progress</h2>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            className={`rounded-md border px-3 py-1 text-sm ${
-              activeProgressTab === "ascension"
-                ? "border-emerald-500 bg-emerald-500/10 text-emerald-600"
-                : "border-border bg-background text-muted-foreground"
-            }`}
-            onClick={() => setActiveProgressTab("ascension")}
-          >
-            Ascension
-          </button>
-          <button
-            type="button"
-            className={`rounded-md border px-3 py-1 text-sm ${
-              activeProgressTab === "skills"
-                ? "border-sky-500 bg-sky-500/10 text-sky-600"
-                : "border-border bg-background text-muted-foreground"
-            }`}
-            onClick={() => setActiveProgressTab("skills")}
-          >
-            Skills
-          </button>
-          <button
-            type="button"
-            className={`rounded-md border px-3 py-1 text-sm ${
-              activeProgressTab === "appendSkills"
-                ? "border-violet-500 bg-violet-500/10 text-violet-600"
-                : "border-border bg-background text-muted-foreground"
-            }`}
-            onClick={() => setActiveProgressTab("appendSkills")}
-          >
-            Append Skills
-          </button>
-        </div>
-
-        {activeProgressTab === "ascension" ? (
-          <div className="mt-3 space-y-3">
-            {ascensionRows.map((row) => (
-              <div key={row.label} className="rounded-md border p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="font-medium">{row.label}</p>
-                  <p className="text-xs text-muted-foreground">
-                    QP: {formatNumber(row.qp)} · Progress: {row.progressPercent.toFixed(1)}%
-                  </p>
-                </div>
-                <div className="mt-2 h-2 w-full overflow-hidden rounded bg-muted">
-                  <div className="h-full bg-emerald-500" style={{ width: `${row.progressPercent}%` }} />
-                </div>
-                <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {row.materials.map((material) => (
-                    <div key={`${row.label}-${material.id}`} className="rounded-md border p-2 text-xs">
-                      <div className="flex items-center gap-2">
-                        <Image
-                          src={material.icon}
-                          alt={material.name}
-                          width={20}
-                          height={20}
-                          className="rounded-sm"
-                        />
-                        <span>{material.name}</span>
-                      </div>
-                      <p className="mt-1 text-muted-foreground">
-                        Need {material.amount} · Owned {material.owned} · Remaining {material.remaining}
-                      </p>
-                      <label className="mt-1 block text-muted-foreground">
-                        Owned quantity
-                        <input
-                          type="number"
-                          min={0}
-                          value={material.owned}
-                          onChange={(event) => handleOwnedQuantityChange(material.id, event.target.value)}
-                          className="mt-1 w-full rounded-md border bg-background px-2 py-1 text-xs"
-                        />
-                      </label>
-                    </div>
-                  ))}
-                  {!row.materials.length ? (
-                    <p className="text-xs text-muted-foreground">No materials for this stage.</p>
-                  ) : null}
-                </div>
-              </div>
+          {/* Ascension + skills */}
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <LevelSelect
+              label="Ascension"
+              value={servant.ascensionLevel}
+              options={[1,2,3,4,5].map((v) => ({ value: v, label: v === 5 ? "Max" : String(v) }))}
+              onChange={(v) => handleUpdateLevels(v, servant.skillLevels)}
+            />
+            {[0, 1, 2].map((i) => (
+              <LevelSelect
+                key={i}
+                label={`Skill ${i + 1}`}
+                value={servant.skillLevels[i]}
+                options={Array.from({ length: 10 }, (_, l) => ({ value: l + 1, label: String(l + 1) }))}
+                onChange={(v) => {
+                  const next = [...servant.skillLevels] as SkillLevels
+                  next[i] = v
+                  handleUpdateLevels(servant.ascensionLevel, next)
+                }}
+              />
             ))}
-            {!ascensionRows.length ? (
-              <p className="text-sm text-muted-foreground">No ascension materials selected.</p>
-            ) : null}
           </div>
-        ) : activeProgressTab === "skills" ? (
-          <>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {[0, 1, 2].map((skillIndex) => (
-                <button
-                  key={`skill-tab-${skillIndex + 1}`}
-                  type="button"
-                  className={`rounded-md border px-3 py-1 text-sm ${
-                    activeSkillTab === skillIndex
-                      ? "border-sky-500 bg-sky-500/10 text-sky-600"
-                      : "border-border bg-background text-muted-foreground"
-                  }`}
-                  onClick={() => setActiveSkillTab(skillIndex)}
-                >
-                  Skill {skillIndex + 1}
-                </button>
-              ))}
+
+          {/* Append skills */}
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <LevelSelect
+                key={i}
+                label={`Append Skill ${i + 1}`}
+                value={servant.appendSkillLevels[i]}
+                options={Array.from({ length: 11 }, (_, l) => ({ value: l, label: String(l) }))}
+                onChange={(v) => {
+                  const next = [...servant.appendSkillLevels] as SkillLevels
+                  next[i] = v
+                  handleUpdateAppendLevels(next)
+                }}
+              />
+            ))}
+          </div>
+        </section>
+
+        {/* ── Progress card ──────────────────────────────────────────────── */}
+        <section className="rounded-xl border border-white/8 bg-white/[0.025] p-5">
+          <h2 className="mb-4 text-sm font-semibold text-white/70">Progress</h2>
+
+          {/* Top-level tab row */}
+          <TabBar
+            tabs={PROGRESS_TABS.map((t) => ({ key: t.key, label: t.label }))}
+            active={activeProgressTab}
+            onChange={(k) => setActiveProgressTab(k as ProgressTab)}
+          />
+
+          {/* Sub-tab row for skills / append */}
+          {(activeProgressTab === "skills" || activeProgressTab === "appendSkills") && (
+            <div className="mt-3">
+              <TabBar
+                tabs={[0, 1, 2].map((i) => ({
+                  key: String(i),
+                  label: activeProgressTab === "skills" ? `Skill ${i + 1}` : `Append ${i + 1}`,
+                }))}
+                active={String(activeProgressTab === "skills" ? activeSkillTab : activeAppendSkillTab)}
+                onChange={(k) =>
+                  activeProgressTab === "skills"
+                    ? setActiveSkillTab(Number(k))
+                    : setActiveAppendSkillTab(Number(k))
+                }
+              />
             </div>
-            <div className="mt-3 space-y-3">
-              {activeSkillRows.map((row) => (
-                <div key={row.label} className="rounded-md border p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-medium">{row.label}</p>
-                    <p className="text-xs text-muted-foreground">
-                      QP: {formatNumber(row.qp)} · Progress: {row.progressPercent.toFixed(1)}%
-                    </p>
-                  </div>
-                  <div className="mt-2 h-2 w-full overflow-hidden rounded bg-muted">
-                    <div className="h-full bg-sky-500" style={{ width: `${row.progressPercent}%` }} />
-                  </div>
-                  <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {row.materials.map((material) => (
-                      <div key={`${row.label}-${material.id}`} className="rounded-md border p-2 text-xs">
-                        <div className="flex items-center gap-2">
-                          <Image
-                            src={material.icon}
-                            alt={material.name}
-                            width={20}
-                            height={20}
-                            className="rounded-sm"
-                          />
-                          <span>{material.name}</span>
-                        </div>
-                        <p className="mt-1 text-muted-foreground">
-                          Need {material.amount} · Owned {material.owned} · Remaining {material.remaining}
-                        </p>
-                        <label className="mt-1 block text-muted-foreground">
-                          Owned quantity
-                          <input
-                            type="number"
-                            min={0}
-                            value={material.owned}
-                            onChange={(event) => handleOwnedQuantityChange(material.id, event.target.value)}
-                            className="mt-1 w-full rounded-md border bg-background px-2 py-1 text-xs"
-                          />
-                        </label>
-                      </div>
-                    ))}
-                    {!row.materials.length ? (
-                      <p className="text-xs text-muted-foreground">No materials for this stage.</p>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-              {!activeSkillRows.length ? (
-                <p className="text-sm text-muted-foreground">No skill materials selected.</p>
-              ) : null}
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {[0, 1, 2].map((skillIndex) => (
-                <button
-                  key={`append-skill-tab-${skillIndex + 1}`}
-                  type="button"
-                  className={`rounded-md border px-3 py-1 text-sm ${
-                    activeAppendSkillTab === skillIndex
-                      ? "border-violet-500 bg-violet-500/10 text-violet-600"
-                      : "border-border bg-background text-muted-foreground"
-                  }`}
-                  onClick={() => setActiveAppendSkillTab(skillIndex)}
-                >
-                  Append {skillIndex + 1}
-                </button>
-              ))}
-            </div>
-            <div className="mt-3 space-y-3">
-              {activeAppendSkillRows.map((row) => (
-                <div key={row.label} className="rounded-md border p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-medium">{row.label}</p>
-                    <p className="text-xs text-muted-foreground">
-                      QP: {formatNumber(row.qp)} · Progress: {row.progressPercent.toFixed(1)}%
-                    </p>
-                  </div>
-                  <div className="mt-2 h-2 w-full overflow-hidden rounded bg-muted">
-                    <div className="h-full bg-violet-500" style={{ width: `${row.progressPercent}%` }} />
-                  </div>
-                  <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {row.materials.map((material) => (
-                      <div key={`${row.label}-${material.id}`} className="rounded-md border p-2 text-xs">
-                        <div className="flex items-center gap-2">
-                          <Image
-                            src={material.icon}
-                            alt={material.name}
-                            width={20}
-                            height={20}
-                            className="rounded-sm"
-                          />
-                          <span>{material.name}</span>
-                        </div>
-                        <p className="mt-1 text-muted-foreground">
-                          Need {material.amount} · Owned {material.owned} · Remaining {material.remaining}
-                        </p>
-                        <label className="mt-1 block text-muted-foreground">
-                          Owned quantity
-                          <input
-                            type="number"
-                            min={0}
-                            value={material.owned}
-                            onChange={(event) => handleOwnedQuantityChange(material.id, event.target.value)}
-                            className="mt-1 w-full rounded-md border bg-background px-2 py-1 text-xs"
-                          />
-                        </label>
-                      </div>
-                    ))}
-                    {!row.materials.length ? (
-                      <p className="text-xs text-muted-foreground">No materials for this stage.</p>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-              {!activeAppendSkillRows.length ? (
-                <p className="text-sm text-muted-foreground">No append skill materials selected.</p>
-              ) : null}
-            </div>
-          </>
-        )}
-      </section>
+          )}
+
+          {/* Stage rows */}
+          <div className="mt-4 space-y-3">
+            {activeRows.map((row) => (
+              <StageProgressCard
+                key={row.label}
+                row={row}
+                barColor={colors.bar}
+                borderColor={colors.border}
+                onOwnedChange={handleOwnedQuantityChange}
+              />
+            ))}
+            {!activeRows.length && (
+              <p className="text-sm text-white/25">{emptyLabel}</p>
+            )}
+          </div>
+        </section>
+      </div>
     </main>
   )
 }

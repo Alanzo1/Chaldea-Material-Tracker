@@ -63,7 +63,7 @@ export function DataTable<TData extends { id: number }, TValue>({
   })
 
   return (
-    <div>
+    <div suppressHydrationWarning>
         <div className="flex items-center py-4">
         <Input
           placeholder="Search..."
