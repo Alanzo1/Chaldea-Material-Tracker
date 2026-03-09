@@ -1,13 +1,13 @@
 "use client"
 
-import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
+import { Home, ListChecks } from "lucide-react"
 
 import { readFavoriteServantIds } from "@/lib/favorites"
+import { HeaderActionLink } from "@/components/HeaderActionLink"
 import { columns, type Servant } from "@/components/ServantTable/columns"
 import { DataTable } from "@/components/ServantTable/dataTable"
 import { PageHeader } from "@/components/PageHeader"
-import { Button } from "@/components/ui/button"
 
 interface FavoriteServantsTablePageProps {
   data: Servant[]
@@ -32,20 +32,8 @@ export function FavoriteServantsTablePage({ data }: FavoriteServantsTablePagePro
         subtitle={`${favoritedServants.length} servant${favoritedServants.length === 1 ? "" : "s"} favorited.`}
         actions={
           <>
-            <Button
-              asChild
-              className="h-9 rounded-md border-border bg-card px-3.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground"
-              variant="outline"
-            >
-              <Link href="/">Homepage</Link>
-            </Button>
-            <Button
-              asChild
-              className="h-9 rounded-md border-border bg-card px-3.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground"
-              variant="outline"
-            >
-              <Link href="/track-materials">Tracker</Link>
-            </Button>
+            <HeaderActionLink href="/" icon={<Home className="size-3.5" />} label="Homepage" />
+            <HeaderActionLink href="/track-materials" icon={<ListChecks className="size-3.5" />} label="Tracker" />
           </>
         }
       />

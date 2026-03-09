@@ -1,10 +1,9 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import Link from "next/link"
 
 import { useServants } from "@/app/contexts/HomePageContext"
-import { Button } from "@/components/ui/button"
+import { HEADER_ACTION_BUTTON_CLASS, HeaderActionLink } from "@/components/HeaderActionLink"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -191,7 +190,7 @@ export function NavBar() {
           {/* Filter popover */}
             <Popover>
               <PopoverTrigger asChild>
-                <button className="group relative flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3.5 text-sm font-medium text-foreground/80 transition-all hover:bg-muted hover:text-foreground">
+                <button className={`${HEADER_ACTION_BUTTON_CLASS} group relative gap-2`}>
                   <svg className="size-3.5 opacity-60 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 16 16" stroke="currentColor" strokeWidth={1.75}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2 4h12M4 8h8M6 12h4" />
                 </svg>
@@ -251,25 +250,25 @@ export function NavBar() {
           </Popover>
 
           {/* Nav links */}
-          <Link
+          <HeaderActionLink
             href="/favorites"
-            className="flex h-9 items-center gap-1.5 rounded-md border border-border bg-card px-3.5 text-sm font-medium text-foreground/80 transition-all hover:bg-muted hover:text-foreground"
-          >
-            <svg className="size-3.5" fill="none" viewBox="0 0 16 16" stroke="currentColor" strokeWidth={1.75}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 13.5s-6-3.5-6-7.5a3 3 0 016 0 3 3 0 016 0c0 4-6 7.5-6 7.5z" />
-            </svg>
-            Favorites
-          </Link>
+            label="Favorites"
+            icon={
+              <svg className="size-3.5" fill="none" viewBox="0 0 16 16" stroke="currentColor" strokeWidth={1.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 13.5s-6-3.5-6-7.5a3 3 0 016 0 3 3 0 016 0c0 4-6 7.5-6 7.5z" />
+              </svg>
+            }
+          />
 
-          <Link
+          <HeaderActionLink
             href="/track-materials"
-            className="flex h-9 items-center gap-1.5 rounded-md border border-border bg-card px-3.5 text-sm font-medium text-foreground/80 transition-all hover:bg-muted hover:text-foreground"
-          >
-            <svg className="size-3.5" fill="none" viewBox="0 0 16 16" stroke="currentColor" strokeWidth={1.75}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h10v10H3zM6 6h4M6 9h4M6 12h2" />
-            </svg>
-            Tracker
-          </Link>
+            label="Tracker"
+            icon={
+              <svg className="size-3.5" fill="none" viewBox="0 0 16 16" stroke="currentColor" strokeWidth={1.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h10v10H3zM6 6h4M6 9h4M6 12h2" />
+              </svg>
+            }
+          />
         </div>
 
         {/* Status pill — far right */}

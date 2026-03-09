@@ -1,6 +1,8 @@
 import Link from "next/link"
+import { Heart, Home, ListChecks } from "lucide-react"
 
 import { getServantData } from "@/app/services/api"
+import { HeaderActionLink } from "@/components/HeaderActionLink"
 import { ServantArtCard } from "@/components/servantPage/ServantArtCard"
 import { ServantHeaderCard } from "@/components/servantPage/ServantHeaderCard"
 import { ServantMetaCard } from "@/components/servantPage/ServantMetaCard"
@@ -95,27 +97,9 @@ export default async function ServantPage({ params }: ServantPageProps) {
         subtitle={`${toTitleCase(servant.className)} · ${"★".repeat(Number(servant.rarity ?? 0))}`}
         actions={
           <>
-            <Button
-              asChild
-              className="h-9 rounded-md border-border bg-card px-3.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground"
-              variant="outline"
-            >
-              <Link href="/">Homepage</Link>
-            </Button>
-            <Button
-              asChild
-              className="h-9 rounded-md border-border bg-card px-3.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground"
-              variant="outline"
-            >
-              <Link href="/favorites">Favorites</Link>
-            </Button>
-            <Button
-              asChild
-              className="h-9 rounded-md border-border bg-card px-3.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground"
-              variant="outline"
-            >
-              <Link href="/track-materials">Tracker</Link>
-            </Button>
+            <HeaderActionLink href="/" icon={<Home className="size-3.5" />} label="Homepage" />
+            <HeaderActionLink href="/favorites" icon={<Heart className="size-3.5" />} label="Favorites" />
+            <HeaderActionLink href="/track-materials" icon={<ListChecks className="size-3.5" />} label="Tracker" />
           </>
         }
       />

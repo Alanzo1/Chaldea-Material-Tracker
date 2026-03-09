@@ -4,12 +4,13 @@ import Link from "next/link"
 import Image from "next/image"
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import { Home } from "lucide-react"
 
+import { HEADER_ACTION_BUTTON_CLASS, HeaderActionLink } from "@/components/HeaderActionLink"
 import MaterialFarmingCard from "@/components/materials/MaterialFarmingCard"
 import { PageHeader } from "@/components/PageHeader"
 import * as materialTracker from "@/lib/material-tracker"
 import type { TrackedMaterialsState } from "@/lib/material-tracker"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 interface ServantIndexItem {
@@ -257,46 +258,42 @@ export default function TrackMaterialsPage() {
     <main className="min-h-screen bg-background pb-16" suppressHydrationWarning>
       <div className="pointer-events-none fixed inset-0 bg-gradient-to-br from-amber-950/10 via-transparent to-violet-950/10" />
 
-      <PageHeader
-        title="Material Tracker"
-        subtitle={`${trackerState.servants.length} servant${trackerState.servants.length === 1 ? "" : "s"} tracked`}
-        actions={
-          <Button
-            asChild
-            className="h-9 rounded-md border-border bg-card px-3.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground"
-            variant="outline"
-          >
-            <Link href="/">Home</Link>
-          </Button>
-        }
-      />
+      <div className="sticky top-0 z-40 isolate">
+        <PageHeader
+          sticky={false}
+          title="Material Tracker"
+          subtitle={`${trackerState.servants.length} servant${trackerState.servants.length === 1 ? "" : "s"} tracked`}
+          actions={
+            <HeaderActionLink href="/" icon={<Home className="size-3.5" />} label="Home" />
+          }
+        />
 
-      {/* Sticky sub-nav */}
-      <div className="sticky top-[104px] z-10 border-b border-border bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/90">
-        <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-4 px-5 py-3 md:px-8">
-          <TabBar
-            tabs={[
-              { key: "tracker",   label: "Servants"        },
-              { key: "materials", label: "Total Materials"  },
-              { key: "farming",   label: "Farming Summary"  },
-            ]}
-            active={activeTab}
-            onChange={(k) => setActiveTab(k as typeof activeTab)}
-          />
-          <button
-            type="button"
-            onClick={() => { setPendingOwnedByMaterialId({}); setMaterialSearchQuery(""); setIsMaterialSearchOpen(true) }}
-            className="flex h-9 items-center gap-1.5 rounded-md border border-border bg-card px-3.5 text-sm font-medium text-foreground/80 transition-all hover:bg-muted hover:text-foreground"
-          >
-            <svg className="size-3.5" fill="none" viewBox="0 0 16 16" stroke="currentColor" strokeWidth={1.75}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 3v10M3 8h10" />
-            </svg>
-            Set Inventory
-          </button>
+        <div className="border-b border-border bg-background shadow-sm">
+          <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-4 px-5 py-3 md:px-8">
+            <TabBar
+              tabs={[
+                { key: "tracker",   label: "Servants"        },
+                { key: "materials", label: "Total Materials"  },
+                { key: "farming",   label: "Farming Summary"  },
+              ]}
+              active={activeTab}
+              onChange={(k) => setActiveTab(k as typeof activeTab)}
+            />
+            <button
+              type="button"
+              onClick={() => { setPendingOwnedByMaterialId({}); setMaterialSearchQuery(""); setIsMaterialSearchOpen(true) }}
+              className={HEADER_ACTION_BUTTON_CLASS}
+            >
+              <svg className="size-3.5" fill="none" viewBox="0 0 16 16" stroke="currentColor" strokeWidth={1.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 3v10M3 8h10" />
+              </svg>
+              Set Inventory
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-5 px-5 pt-6 md:px-8">
+      <div className="relative z-0 mx-auto flex w-full max-w-7xl flex-col gap-5 px-5 pt-6 md:px-8">
 
         {/* ── TRACKER TAB ─────────────────────────────────────────────────── */}
         {activeTab === "tracker" && (
@@ -353,7 +350,7 @@ export default function TrackMaterialsPage() {
             </div>
 
             {/* Servant list */}
-            <div className="grid gap-3">
+            <div className="grid gap-4">
               {trackerState.servants.map((servant) => {
                 const totals = materialTracker.calculateServantRequirements(servant, trackerState.ownedByMaterialId)
                 const remainingCount = totals.materialsWithOwned.filter((item) => item.remaining > 0).length
@@ -374,20 +371,20 @@ export default function TrackMaterialsPage() {
                       setDraggedServantId(null)
                     }}
                     onClick={() => router.push(`/track-materials/${servant.servantId}`)}
-                    className="group cursor-pointer rounded-xl border border-white/8 bg-white/[0.025] p-4 transition-all hover:border-white/15 hover:bg-white/[0.04]"
+                    className="group cursor-pointer rounded-xl border border-white/8 bg-white/[0.025] p-5 transition-all hover:border-white/15 hover:bg-white/[0.04]"
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-4">
                         {servant.portrait && (
-                          <Image src={servant.portrait} alt={servant.servantName} width={52} height={52} className="rounded-lg border border-white/10" />
+                          <Image src={servant.portrait} alt={servant.servantName} width={64} height={64} className="rounded-lg border border-white/10" />
                         )}
                         <div>
-                          <p className="text-sm font-semibold text-white/90">{servant.servantName}</p>
-                          <p className="mt-0.5 text-xs text-white/40">
+                          <p className="text-base font-semibold text-white/90">{servant.servantName}</p>
+                          <p className="mt-1 text-sm text-white/40">
                             {servant.className}{" "}
                             <span className={getStarColorClass(servant.rarity)}>{"★".repeat(servant.rarity)}</span>
                           </p>
-                          <p className="mt-1 text-[10px] text-white/25">
+                          <p className="mt-1.5 text-xs text-white/25">
                             Asc {servant.ascensionLevel >= 5 ? "Max" : servant.ascensionLevel} · Skills {formatSkillLevels(servant.skillLevels)} · Append {formatSkillLevels(servant.appendSkillLevels)}
                           </p>
                         </div>
@@ -400,11 +397,11 @@ export default function TrackMaterialsPage() {
                         Remove
                       </button>
                     </div>
-                    <div className="mt-3">
-                      <div className="h-1 w-full overflow-hidden rounded-full bg-white/8">
+                    <div className="mt-4">
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/8">
                         <div className="h-full rounded-full bg-emerald-500 transition-all duration-500" style={{ width: `${progress}%` }} />
                       </div>
-                      <div className="mt-1.5 flex items-center justify-between text-[10px] text-white/25">
+                      <div className="mt-2 flex items-center justify-between text-xs text-white/25">
                         <span>{progress.toFixed(1)}% complete</span>
                         <span>{remainingCount} material type{remainingCount === 1 ? "" : "s"} remaining</span>
                       </div>

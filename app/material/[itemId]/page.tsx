@@ -1,8 +1,8 @@
-import Link from "next/link"
+import { ArrowLeft } from "lucide-react"
 
+import { HeaderActionLink } from "@/components/HeaderActionLink"
 import MaterialFarmingCard from "@/components/materials/MaterialFarmingCard"
 import { PageHeader } from "@/components/PageHeader"
-import { Button } from "@/components/ui/button"
 
 interface MaterialPageProps {
   params: Promise<{
@@ -45,13 +45,7 @@ export default async function MaterialPage({
         title={itemName}
         subtitle={itemDescription || "Material details and farming locations"}
         actions={
-          <Button
-            asChild
-            className="h-9 rounded-md border-border bg-card px-3.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground"
-            variant="outline"
-          >
-            <Link href={backHref}>Back</Link>
-          </Button>
+          <HeaderActionLink href={backHref} icon={<ArrowLeft className="size-3.5" />} label="Back" />
         }
       />
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 pt-6">

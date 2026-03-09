@@ -1,9 +1,9 @@
 "use client"
 
 import Image from "next/image"
-import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { useParams } from "next/navigation"
+import { ArrowLeft, Home, ListChecks } from "lucide-react"
 
 import {
   readTrackedMaterialsState,
@@ -14,8 +14,8 @@ import {
   type TrackedServantEntry,
   type TrackedMaterialsState,
 } from "@/lib/material-tracker"
+import { HeaderActionLink } from "@/components/HeaderActionLink"
 import { PageHeader } from "@/components/PageHeader"
-import { Button } from "@/components/ui/button"
 
 interface StageProgressRow {
   label: string
@@ -352,13 +352,7 @@ export default function TrackedServantDetailPage() {
           title="Tracked Servant"
           subtitle="Servant not found."
           actions={
-            <Button
-              asChild
-              className="h-9 rounded-md border-border bg-card px-3.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground"
-              variant="outline"
-            >
-              <Link href="/track-materials">Back to Tracker</Link>
-            </Button>
+            <HeaderActionLink href="/track-materials" icon={<ArrowLeft className="size-3.5" />} label="Back to Tracker" />
           }
         />
         <div className="mx-auto max-w-5xl px-6 pt-8">
@@ -380,20 +374,8 @@ export default function TrackedServantDetailPage() {
         subtitle={`${servant.className} · ${"★".repeat(servant.rarity)}`}
         actions={
           <>
-            <Button
-              asChild
-              className="h-9 rounded-md border-border bg-card px-3.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground"
-              variant="outline"
-            >
-              <Link href="/track-materials">Tracker</Link>
-            </Button>
-            <Button
-              asChild
-              className="h-9 rounded-md border-border bg-card px-3.5 text-sm font-medium text-foreground/80 hover:bg-muted hover:text-foreground"
-              variant="outline"
-            >
-              <Link href="/">Home</Link>
-            </Button>
+            <HeaderActionLink href="/track-materials" icon={<ListChecks className="size-3.5" />} label="Tracker" />
+            <HeaderActionLink href="/" icon={<Home className="size-3.5" />} label="Home" />
           </>
         }
       />

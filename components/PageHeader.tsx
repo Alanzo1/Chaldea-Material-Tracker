@@ -8,6 +8,7 @@ interface PageHeaderProps {
   eyebrow?: string
   actions?: ReactNode
   className?: string
+  sticky?: boolean
 }
 
 export function PageHeader({
@@ -16,11 +17,14 @@ export function PageHeader({
   eyebrow = "Fate / Grand Order",
   actions,
   className,
+  sticky = true,
 }: PageHeaderProps) {
   return (
     <header
       className={cn(
-        "sticky top-0 z-20 border-b border-border bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/90",
+        sticky
+          ? "sticky top-0 z-20 border-b border-border bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/90"
+          : "border-b border-border bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/90",
         className
       )}
     >
