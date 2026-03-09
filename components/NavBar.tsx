@@ -38,19 +38,22 @@ function FilterSection({
   )
 
   return (
-    <div className="space-y-2">
-      <h3 className="text-sm font-semibold">{title}</h3>
+    <section className="space-y-2 rounded-lg border border-border/60 bg-muted/20 p-3">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {title}
+      </h3>
       <Input
+        className="h-8"
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         placeholder={`Search ${title.toLowerCase()}...`}
       />
-      <ScrollArea className="h-64 rounded-md border p-3">
+      <ScrollArea className="h-56 rounded-md border border-border/60 bg-background/70 p-3">
         <div className="space-y-2">
           {visibleOptions.map((option) => (
             <label
               key={option}
-              className="flex cursor-pointer items-center gap-2 text-sm"
+              className="flex cursor-pointer items-center gap-2 rounded-sm px-1 py-0.5 text-sm hover:bg-muted/40"
             >
               <Checkbox
                 checked={selected.includes(option)}
@@ -64,7 +67,7 @@ function FilterSection({
           ) : null}
         </div>
       </ScrollArea>
-    </div>
+    </section>
   )
 }
 
@@ -171,6 +174,7 @@ export function NavBar() {
       label: `Stars: ${value}`,
     })),
   ]
+  const activeFilterCount = activeFilters.length
 
   const handleToggle = (key: FilterKey, value: string, checked: boolean) => {
     setFilters((current: any) => ({
@@ -193,91 +197,108 @@ export function NavBar() {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-4 py-4">
-      <h3 className="bg-primary px-3 py-2 text-primary-foreground">FGO Database</h3>
-
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline">Advanced Filter</Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[min(96vw,96rem)] space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-            <FilterSection
-              title="Classes"
-              options={classOptions}
-              selected={filters.classes}
-              formatOptions
-              onToggle={(value, checked) => handleToggle("classes", value, checked)}
-            />
-            <FilterSection
-              title="Skill Effects"
-              options={buffOptions}
-              selected={filters.buffs}
-              onToggle={(value, checked) => handleToggle("buffs", value, checked)}
-            />
-            <FilterSection
-              title="Debuff Effects"
-              options={debuffOptions}
-              selected={filters.debuffs}
-              onToggle={(value, checked) => handleToggle("debuffs", value, checked)}
-            />
-            <FilterSection
-              title="Traits"
-              options={traitOptions}
-              selected={filters.traits}
-              onToggle={(value, checked) => handleToggle("traits", value, checked)}
-            />
-            <FilterSection
-              title="Alignments"
-              options={alignmentOptions}
-              selected={filters.alignments}
-              onToggle={(value, checked) => handleToggle("alignments", value, checked)}
-            />
-            <FilterSection
-              title="Stars"
-              options={starOptions}
-              selected={filters.stars}
-              onToggle={(value, checked) => handleToggle("stars", value, checked)}
-            />
+    <header className="sticky top-0 z-20 border-b border-border/60 bg-background/90 backdrop-blur">
+      <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 px-4 py-4 md:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              Fate/Grand Order
+            </p>
+            <h1 className="text-xl font-semibold leading-none">Servant Database</h1>
           </div>
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold">Active Filters</h3>
-            <ScrollArea className="h-48 rounded-md border p-3">
-              <div className="space-y-2">
-                {activeFilters.map((filter) => (
-                  <label
-                    key={`${filter.key}-${filter.value}`}
-                    className="flex cursor-pointer items-center gap-2 text-sm"
-                  >
-                    <Checkbox
-                      checked
-                      onCheckedChange={(checked) =>
-                        handleToggle(filter.key, filter.value, checked === true)
-                      }
-                    />
-                    <span>{filter.label}</span>
-                  </label>
-                ))}
-                {!activeFilters.length ? (
-                  <p className="text-sm text-muted-foreground">
-                    No active filters.
-                  </p>
-                ) : null}
-              </div>
-            </ScrollArea>
-          </div>
-          <Button variant="ghost" onClick={clearFilters}>
-            Clear filters
-          </Button>
-        </PopoverContent>
-      </Popover>
+          <div className="flex flex-wrap items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button className="h-9 rounded-full px-4" variant="secondary">
+                  Advanced Filter
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[min(96vw,96rem)] space-y-4 rounded-2xl border border-border/70 bg-card/95 p-4 shadow-xl">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+                  <FilterSection
+                    title="Classes"
+                    options={classOptions}
+                    selected={filters.classes}
+                    formatOptions
+                    onToggle={(value, checked) => handleToggle("classes", value, checked)}
+                  />
+                  <FilterSection
+                    title="Skill Effects"
+                    options={buffOptions}
+                    selected={filters.buffs}
+                    onToggle={(value, checked) => handleToggle("buffs", value, checked)}
+                  />
+                  <FilterSection
+                    title="Debuff Effects"
+                    options={debuffOptions}
+                    selected={filters.debuffs}
+                    onToggle={(value, checked) => handleToggle("debuffs", value, checked)}
+                  />
+                  <FilterSection
+                    title="Traits"
+                    options={traitOptions}
+                    selected={filters.traits}
+                    onToggle={(value, checked) => handleToggle("traits", value, checked)}
+                  />
+                  <FilterSection
+                    title="Alignments"
+                    options={alignmentOptions}
+                    selected={filters.alignments}
+                    onToggle={(value, checked) => handleToggle("alignments", value, checked)}
+                  />
+                  <FilterSection
+                    title="Stars"
+                    options={starOptions}
+                    selected={filters.stars}
+                    onToggle={(value, checked) => handleToggle("stars", value, checked)}
+                  />
+                </div>
+                <section className="space-y-2 rounded-lg border border-border/60 bg-muted/20 p-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Active Filters
+                  </h3>
+                  <ScrollArea className="h-44 rounded-md border border-border/60 bg-background/70 p-3">
+                    <div className="space-y-2">
+                      {activeFilters.map((filter) => (
+                        <label
+                          key={`${filter.key}-${filter.value}`}
+                          className="flex cursor-pointer items-center gap-2 rounded-sm px-1 py-0.5 text-sm hover:bg-muted/40"
+                        >
+                          <Checkbox
+                            checked
+                            onCheckedChange={(checked) =>
+                              handleToggle(filter.key, filter.value, checked === true)
+                            }
+                          />
+                          <span>{filter.label}</span>
+                        </label>
+                      ))}
+                      {!activeFilters.length ? (
+                        <p className="text-sm text-muted-foreground">No active filters.</p>
+                      ) : null}
+                    </div>
+                  </ScrollArea>
+                </section>
+                <Button variant="ghost" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              </PopoverContent>
+            </Popover>
 
-      <Button asChild variant="outline">
-        <Link href="/favorites">Favorites</Link>
-      </Button>
-      <Button asChild variant="outline">
-        <Link href="/track-materials">Tracker</Link>
-      </Button>
-    </div>
+            <Button asChild className="h-9 rounded-full px-4" variant="outline">
+              <Link href="/favorites">Favorites</Link>
+            </Button>
+            <Button asChild className="h-9 rounded-full px-4" variant="outline">
+              <Link href="/track-materials">Tracker</Link>
+            </Button>
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {activeFilterCount
+            ? `${activeFilterCount} active filter${activeFilterCount === 1 ? "" : "s"} applied`
+            : "No filters applied"}
+        </p>
+      </div>
+    </header>
   )
 }
