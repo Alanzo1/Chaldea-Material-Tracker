@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { unstable_cache } from "next/cache"
 
 const ITEMS_URL = "https://api.atlasacademy.io/export/NA/nice_item.json"
 
@@ -15,8 +16,6 @@ interface MaterialIndexItem {
   name: string
   icon: string
 }
-
-let materialCache: MaterialIndexItem[] | null = null
 
 function shouldIncludeItem(item: AtlasItem) {
   const id = Number(item.id ?? 0)
@@ -52,10 +51,8 @@ function normalizeItems(items: AtlasItem[]) {
 }
 
 async function getMaterialsIndex() {
-  if (materialCache) return materialCache
-
   const response = await fetch(ITEMS_URL, {
-    next: { revalidate: 86400 },
+    next: { revalidate: 86400, tags: ["atlas:materials-index"] },
   })
 
   if (!response.ok) {
@@ -63,13 +60,21 @@ async function getMaterialsIndex() {
   }
 
   const payload = (await response.json()) as AtlasItem[]
-  materialCache = normalizeItems(Array.isArray(payload) ? payload : [])
-  return materialCache
+  return normalizeItems(Array.isArray(payload) ? payload : [])
 }
+
+const getCachedMaterialsIndex = unstable_cache(
+  async () => getMaterialsIndex(),
+  ["atlas:materials-index"],
+  {
+    revalidate: 86400,
+    tags: ["atlas:materials-index"],
+  }
+)
 
 export async function GET() {
   try {
-    const materials = await getMaterialsIndex()
+    const materials = await getCachedMaterialsIndex()
     return NextResponse.json({ materials })
   } catch (error) {
     return NextResponse.json(

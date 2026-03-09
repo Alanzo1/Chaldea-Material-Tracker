@@ -158,7 +158,7 @@ export default function MaterialFarmingCard({
     setErrorMessage("")
 
     fetch(`/api/atlas/material-farming?itemId=${itemId}&limit=6`, {
-      cache: "no-store",
+      cache: "force-cache",
     })
       .then(async (response) => {
         const payload = (await response.json()) as MaterialFarmingResponse

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { unstable_cache } from "next/cache"
 import dropData from "@/data/drop-data.json"
 
 interface FarmingNode {
@@ -216,7 +217,18 @@ export async function GET(request: NextRequest) {
   )
   const minRuns = Math.max(0, toNumber(request.nextUrl.searchParams.get("minRuns"), DEFAULT_MIN_RUNS))
 
-  const rawNodes = Array.isArray(data[itemId]) ? [...data[itemId]] : []
+  const nodes = await getCachedMaterialNodes(numericItemId, all, limit, minRuns)
+
+  return NextResponse.json({ nodes })
+}
+
+async function computeMaterialNodes(
+  numericItemId: number,
+  all: boolean,
+  limit: number,
+  minRuns: number
+) {
+  const rawNodes = Array.isArray(data[String(numericItemId)]) ? [...data[String(numericItemId)]] : []
   const trainingGroundNodes = getTrainingGroundNodes(numericItemId)
   trainingGroundNodes.forEach((trainingNode) => {
     if (!rawNodes.some((node) => node.questName === trainingNode.questName)) {
@@ -224,9 +236,7 @@ export async function GET(request: NextRequest) {
     }
   })
 
-  if (!rawNodes.length) {
-    return NextResponse.json({ nodes: [] })
-  }
+  if (!rawNodes.length) return []
 
   const normalizedNodes = rawNodes.map(normalizeNode)
   const needsQuestMeta = normalizedNodes.some((node) => Number(node.id) > 0)
@@ -243,15 +253,26 @@ export async function GET(request: NextRequest) {
     ? sortedNodes
     : sortedNodes.filter((node) => Number(node.runs ?? 0) >= minRuns || Number(node.id) <= 0)
 
-  let nodes: FarmingNode[] = []
   if (all) {
-    nodes = filteredNodes.slice(0, MAX_ALL_RESULTS)
-  } else {
-    const pinnedNodes = filteredNodes.filter(isPinnedTrainingNode)
-    const normalNodes = filteredNodes.filter((node) => !isPinnedTrainingNode(node))
-    const targetCount = Math.max(limit, pinnedNodes.length)
-    nodes = [...pinnedNodes, ...normalNodes].slice(0, targetCount)
+    return filteredNodes.slice(0, MAX_ALL_RESULTS)
   }
 
-  return NextResponse.json({ nodes })
+  const pinnedNodes = filteredNodes.filter(isPinnedTrainingNode)
+  const normalNodes = filteredNodes.filter((node) => !isPinnedTrainingNode(node))
+  const targetCount = Math.max(limit, pinnedNodes.length)
+  return [...pinnedNodes, ...normalNodes].slice(0, targetCount)
 }
+
+const getCachedMaterialNodes = unstable_cache(
+  async (
+    numericItemId: number,
+    all: boolean,
+    limit: number,
+    minRuns: number
+  ) => computeMaterialNodes(numericItemId, all, limit, minRuns),
+  ["atlas:material-farming"],
+  {
+    revalidate: 86400,
+    tags: ["atlas:material-farming"],
+  }
+)

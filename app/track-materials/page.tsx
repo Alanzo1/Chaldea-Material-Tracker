@@ -192,11 +192,11 @@ export default function TrackMaterialsPage() {
 
   useEffect(() => {
     setTrackerState(materialTracker.readTrackedMaterialsState())
-    fetch("/api/atlas/servants-index", { cache: "no-store" })
+    fetch("/api/atlas/servants-index", { cache: "force-cache" })
       .then((r) => r.json())
       .then((p) => setServantIndex(Array.isArray(p?.servants) ? p.servants : []))
       .catch(() => setServantIndex([]))
-    fetch("/api/atlas/materials-index", { cache: "no-store" })
+    fetch("/api/atlas/materials-index", { cache: "force-cache" })
       .then((r) => r.json())
       .then((p) => setMaterialIndex(Array.isArray(p?.materials) ? p.materials : []))
       .catch(() => setMaterialIndex([]))
@@ -243,7 +243,7 @@ export default function TrackMaterialsPage() {
     Promise.all(
       incompleteMaterials.map(async (material) => {
         try {
-          const r = await fetch(`/api/atlas/material-farming?itemId=${material.id}&limit=1`, { cache: "no-store" })
+          const r = await fetch(`/api/atlas/material-farming?itemId=${material.id}&limit=1`, { cache: "force-cache" })
           const p = await r.json()
           const node = Array.isArray(p?.nodes) ? p.nodes[0] : null
           return [material.id, Number(node?.apPerDrop ?? Infinity)] as const
@@ -266,7 +266,7 @@ export default function TrackMaterialsPage() {
   const handleAddServant = async (servant: ServantIndexItem) => {
     setAddingServantId(servant.id)
     try {
-      const r = await fetch(`/api/atlas/servant/${servant.id}`, { cache: "no-store" })
+      const r = await fetch(`/api/atlas/servant/${servant.id}`, { cache: "force-cache" })
       const payload = await r.json()
       if (!r.ok) throw new Error(payload?.error || "Failed to load servant")
       setTrackerState(materialTracker.upsertTrackedServant({
