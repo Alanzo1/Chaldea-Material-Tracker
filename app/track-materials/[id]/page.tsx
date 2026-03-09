@@ -6,6 +6,7 @@ import { useParams } from "next/navigation"
 import { ArrowLeft, Home, ListChecks } from "lucide-react"
 
 import {
+  calculateServantRequirements,
   readTrackedMaterialsState,
   setOwnedMaterialQuantity,
   updateTrackedServantLevels,
@@ -299,6 +300,10 @@ export default function TrackedServantDetailPage() {
 
   const activeSkillRows = skillRowsBySkill[activeSkillTab] ?? []
   const activeAppendSkillRows = appendSkillRowsBySkill[activeAppendSkillTab] ?? []
+  const totalRequirements = useMemo(
+    () => (servant ? calculateServantRequirements(servant, state.ownedByMaterialId) : null),
+    [servant, state.ownedByMaterialId]
+  )
 
   const handleUpdateLevels = (nextAscension: number, nextSkills: SkillLevels) => {
     if (!servant) return
@@ -374,8 +379,8 @@ export default function TrackedServantDetailPage() {
         subtitle={`${servant.className} · ${"★".repeat(servant.rarity)}`}
         actions={
           <>
-            <HeaderActionLink href="/track-materials" icon={<ListChecks className="size-3.5" />} label="Tracker" />
             <HeaderActionLink href="/" icon={<Home className="size-3.5" />} label="Home" />
+            <HeaderActionLink href="/track-materials" icon={<ListChecks className="size-3.5" />} label="Tracker" />
           </>
         }
       />
@@ -491,6 +496,55 @@ export default function TrackedServantDetailPage() {
               <p className="text-sm text-white/25">{emptyLabel}</p>
             )}
           </div>
+        </section>
+
+        {/* ── Total materials needed card ───────────────────────────────── */}
+        <section className="rounded-xl border border-white/8 bg-white/[0.025] p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold text-white/70">Total Materials Needed</h2>
+            <div className="flex items-center gap-4 text-[11px] text-white/40">
+              <span>QP: {formatNumber(totalRequirements?.qp ?? 0)}</span>
+              <span>Progress: {(totalRequirements?.progressPercent ?? 0).toFixed(1)}%</span>
+            </div>
+          </div>
+
+          {totalRequirements && totalRequirements.materialsWithOwned.length > 0 ? (
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {totalRequirements.materialsWithOwned.map((material) => (
+                <div
+                  key={material.id}
+                  className="rounded-lg border border-white/8 bg-black/20 p-2.5"
+                >
+                  <div className="flex items-center gap-2">
+                    <Image
+                      src={material.icon}
+                      alt={material.name}
+                      width={24}
+                      height={24}
+                      className="rounded-sm"
+                    />
+                    <span className="truncate text-xs font-medium text-white/80">
+                      {material.name}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-1 text-[10px] text-white/30">
+                    <span>
+                      Need <span className="text-white/50">{formatNumber(material.amount)}</span>
+                    </span>
+                    <span>·</span>
+                    <span>
+                      Remaining{" "}
+                      <span className={material.remaining > 0 ? "text-red-400/70" : "text-emerald-400/70"}>
+                        {formatNumber(material.remaining)}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-white/25">No materials needed.</p>
+          )}
         </section>
       </div>
     </main>

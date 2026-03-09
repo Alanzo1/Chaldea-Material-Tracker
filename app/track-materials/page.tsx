@@ -2,9 +2,10 @@
 
 import Link from "next/link"
 import Image from "next/image"
+import type { ReactNode } from "react"
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Home } from "lucide-react"
+import { Boxes, Heart, Home, Pickaxe, Users } from "lucide-react"
 
 import { HEADER_ACTION_BUTTON_CLASS, HeaderActionLink } from "@/components/HeaderActionLink"
 import MaterialFarmingCard from "@/components/materials/MaterialFarmingCard"
@@ -61,7 +62,7 @@ function TabBar({
   active,
   onChange,
 }: {
-  tabs: { key: string; label: string }[]
+  tabs: { key: string; label: string; icon?: ReactNode }[]
   active: string
   onChange: (key: string) => void
 }) {
@@ -78,6 +79,7 @@ function TabBar({
               : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
           }`}
         >
+          {tab.icon}
           {tab.label}
         </button>
       ))}
@@ -264,7 +266,10 @@ export default function TrackMaterialsPage() {
           title="Material Tracker"
           subtitle={`${trackerState.servants.length} servant${trackerState.servants.length === 1 ? "" : "s"} tracked`}
           actions={
-            <HeaderActionLink href="/" icon={<Home className="size-3.5" />} label="Home" />
+            <>
+              <HeaderActionLink href="/" icon={<Home className="size-3.5" />} label="Home" />
+              <HeaderActionLink href="/favorites" icon={<Heart className="size-3.5" />} label="Favorites" />
+            </>
           }
         />
 
@@ -272,9 +277,9 @@ export default function TrackMaterialsPage() {
           <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-4 px-5 py-3 md:px-8">
             <TabBar
               tabs={[
-                { key: "tracker",   label: "Servants"        },
-                { key: "materials", label: "Total Materials"  },
-                { key: "farming",   label: "Farming Summary"  },
+                { key: "tracker", label: "Servants", icon: <Users className="size-3.5" /> },
+                { key: "materials", label: "Total Materials", icon: <Boxes className="size-3.5" /> },
+                { key: "farming", label: "Farming Summary", icon: <Pickaxe className="size-3.5" /> },
               ]}
               active={activeTab}
               onChange={(k) => setActiveTab(k as typeof activeTab)}
