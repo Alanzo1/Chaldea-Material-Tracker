@@ -6,6 +6,7 @@ const WARS_URL = `https://api.atlasacademy.io/export/${REGION}/nice_war.json`
 const QUEST_PHASE_URL = (questId, phase) =>
   `https://api.atlasacademy.io/nice/${REGION}/quest/${questId}/${phase}`
 const CONCURRENCY = 20
+const FETCH_TIMEOUT_MS = 12000
 const OUTPUT_PATH = join(process.cwd(), "data", "drop-data.json")
 const BLOCKED_QUEST_TYPES = new Set([
   "main",
@@ -58,7 +59,9 @@ function dedupeAndSort(nodes) {
 }
 
 async function fetchJson(url) {
-  const response = await fetch(url)
+  const response = await fetch(url, {
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  })
   if (!response.ok) {
     throw new Error(`Fetch failed (${response.status}): ${url}`)
   }
@@ -79,6 +82,11 @@ async function loadExistingOutput() {
 }
 
 async function run() {
+  if (process.env.SKIP_DROP_BUILD === "1") {
+    console.log("Skipping drop data build (SKIP_DROP_BUILD=1)")
+    return
+  }
+
   console.log("Fetching wars...")
   const wars = await fetchJson(WARS_URL)
 
@@ -132,7 +140,9 @@ async function run() {
       if (index >= jobs.length) break
 
       const { questId, phase, warName, locationName, questTitle } = jobs[index]
-      const detail = await fetch(QUEST_PHASE_URL(questId, phase))
+      const detail = await fetch(QUEST_PHASE_URL(questId, phase), {
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      })
         .then((response) => (response.ok ? response.json() : null))
         .catch(() => null)
 

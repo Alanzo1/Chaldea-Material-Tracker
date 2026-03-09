@@ -1,13 +1,17 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-images: {
+  turbopack: {
+    root: process.cwd(),
+  },
+  images: {
     remotePatterns: [
       {
         protocol: "https",
         hostname: "static.atlasacademy.io",
       },
     ],
-  },};
+  },
+};
 
 export default nextConfig;

@@ -26,7 +26,7 @@ interface ComputeStateResponse {
   id: number
   type: "computeState"
   aggregate: RequirementTotals
-  perServantById: Record<string, RequirementTotals>
+  perServantSummaryById: Record<string, { progressPercent: number; remainingCount: number }>
 }
 
 interface ComputeServantResponse {
@@ -50,12 +50,20 @@ interface PendingRequest {
 let workerInstance: Worker | null = null
 let requestId = 0
 const pending = new Map<number, PendingRequest>()
+let workerDisabled = false
 
 function getWorker() {
   if (typeof window === "undefined") return null
+  if (workerDisabled) return null
   if (workerInstance) return workerInstance
 
-  workerInstance = new Worker(new URL("./material-tracker.worker.ts", import.meta.url), { type: "module" })
+  try {
+    workerInstance = new Worker(new URL("./material-tracker.worker.ts", import.meta.url), { type: "module" })
+  } catch {
+    workerDisabled = true
+    return null
+  }
+
   workerInstance.onmessage = (event: MessageEvent<WorkerResponse>) => {
     const payload = event.data
     const request = pending.get(payload.id)
@@ -72,6 +80,11 @@ function getWorker() {
   workerInstance.onerror = () => {
     pending.forEach(({ reject }) => reject(new Error("Tracker worker error")))
     pending.clear()
+    workerDisabled = true
+    if (workerInstance) {
+      workerInstance.terminate()
+      workerInstance = null
+    }
   }
 
   return workerInstance
@@ -96,7 +109,7 @@ export async function computeTrackerStateInWorker(state: TrackedMaterialsState) 
 
   return {
     aggregate: response.aggregate,
-    perServantById: response.perServantById,
+    perServantSummaryById: response.perServantSummaryById,
   }
 }
 

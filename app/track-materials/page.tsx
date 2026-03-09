@@ -209,7 +209,7 @@ export default function TrackMaterialsPage() {
   const [efficiencyByMaterialId, setEfficiencyByMaterialId] = useState<EfficiencyLookup>({})
   const [expandedFarmingMaterialIds, setExpandedFarmingMaterialIds] = useState<number[]>([])
   const [aggregate, setAggregate] = useState<RequirementTotals>(EMPTY_TOTALS)
-  const [perServantById, setPerServantById] = useState<Record<string, RequirementTotals>>({})
+  const [perServantSummaryById, setPerServantSummaryById] = useState<Record<string, { progressPercent: number; remainingCount: number }>>({})
 
   useEffect(() => {
     setTrackerState(materialTracker.readTrackedMaterialsState())
@@ -261,19 +261,25 @@ export default function TrackMaterialsPage() {
       .then((payload) => {
         if (cancelled) return
         setAggregate(payload.aggregate)
-        setPerServantById(payload.perServantById)
+        setPerServantSummaryById(payload.perServantSummaryById)
       })
       .catch(() => {
         if (cancelled) return
         const fallbackAggregate = materialTracker.calculateAggregateRequirements(trackerState)
-        const fallbackPerServantById = Object.fromEntries(
+        const fallbackPerServantSummaryById = Object.fromEntries(
           trackerState.servants.map((servant) => [
             String(servant.servantId),
-            materialTracker.calculateServantRequirements(servant, trackerState.ownedByMaterialId),
+            (() => {
+              const totals = materialTracker.calculateServantRequirements(servant, trackerState.ownedByMaterialId)
+              return {
+                progressPercent: totals.progressPercent,
+                remainingCount: totals.materialsWithOwned.filter((item) => item.remaining > 0).length,
+              }
+            })(),
           ])
         )
         setAggregate(fallbackAggregate)
-        setPerServantById(fallbackPerServantById)
+        setPerServantSummaryById(fallbackPerServantSummaryById)
       })
 
     return () => {
@@ -447,9 +453,9 @@ export default function TrackMaterialsPage() {
             {/* Servant list */}
             <div className="grid gap-4">
               {trackerState.servants.map((servant) => {
-                const totals = perServantById[String(servant.servantId)] ?? EMPTY_TOTALS
-                const remainingCount = totals.materialsWithOwned.filter((item) => item.remaining > 0).length
-                const progress = Math.min(100, Math.max(0, totals.progressPercent))
+                const summary = perServantSummaryById[String(servant.servantId)] ?? { progressPercent: 0, remainingCount: 0 }
+                const remainingCount = summary.remainingCount
+                const progress = Math.min(100, Math.max(0, summary.progressPercent))
 
                 return (
                   <article

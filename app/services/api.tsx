@@ -250,18 +250,23 @@ function transformServantsForHomePage(data: any[]) {
 
 export const getServantsHomePageIndex = unstable_cache(
     async (region = "NA") => {
-        const response = await fetch(`${BASE_URL}/export/${region}/nice_servant.json`, {
-            next: {
-                revalidate: 3600,
-            },
-        })
+        try {
+            const response = await fetch(`${BASE_URL}/export/${region}/nice_servant.json`, {
+                next: {
+                    revalidate: 3600,
+                },
+            })
 
-        if (!response.ok) {
-            throw new Error("Failed to fetch servants.")
+            if (!response.ok) {
+                throw new Error("Failed to fetch servants.")
+            }
+
+            const data = await response.json()
+            return transformServantsForHomePage(data)
+        } catch (error) {
+            console.error("Servants index fallback to empty list:", error)
+            return []
         }
-
-        const data = await response.json()
-        return transformServantsForHomePage(data)
     },
     ["servants-homepage-index"],
     {

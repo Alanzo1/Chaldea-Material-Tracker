@@ -6,7 +6,7 @@
     "build:drops": "node scripts/build-drop-data.mjs",
     "prebuild": "npm run build:drops",
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint"
   },

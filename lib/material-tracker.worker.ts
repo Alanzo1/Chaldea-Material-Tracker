@@ -25,7 +25,7 @@ interface ComputeStateResponse {
   id: number
   type: "computeState"
   aggregate: RequirementTotals
-  perServantById: Record<string, RequirementTotals>
+  perServantSummaryById: Record<string, { progressPercent: number; remainingCount: number }>
 }
 
 interface ComputeServantResponse {
@@ -51,20 +51,24 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
   try {
     if (payload.type === "computeState") {
       const aggregate = calculateAggregateRequirements(payload.state)
-      const perServantById: Record<string, RequirementTotals> = {}
+      const perServantSummaryById: Record<string, { progressPercent: number; remainingCount: number }> = {}
 
       payload.state.servants.forEach((servant) => {
-        perServantById[String(servant.servantId)] = calculateServantRequirements(
+        const totals = calculateServantRequirements(
           servant,
           payload.state.ownedByMaterialId
         )
+        perServantSummaryById[String(servant.servantId)] = {
+          progressPercent: totals.progressPercent,
+          remainingCount: totals.materialsWithOwned.filter((item) => item.remaining > 0).length,
+        }
       })
 
       postResponse({
         id: payload.id,
         type: "computeState",
         aggregate,
-        perServantById,
+        perServantSummaryById,
       })
       return
     }
