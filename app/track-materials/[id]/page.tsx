@@ -7,6 +7,7 @@ import { ArrowLeft, Home, ListChecks } from "lucide-react"
 
 import {
   calculateServantRequirements,
+  type RequirementTotals,
   readTrackedMaterialsState,
   setOwnedMaterialQuantity,
   updateTrackedServantLevels,
@@ -15,6 +16,7 @@ import {
   type TrackedServantEntry,
   type TrackedMaterialsState,
 } from "@/lib/material-tracker"
+import { computeServantRequirementsInWorker } from "@/lib/material-tracker-worker-client"
 import { HeaderActionLink } from "@/components/HeaderActionLink"
 import { PageHeader } from "@/components/PageHeader"
 
@@ -26,6 +28,12 @@ interface StageProgressRow {
 }
 
 const NUMBER_FORMATTER = new Intl.NumberFormat("en-US")
+const EMPTY_TOTALS: RequirementTotals = {
+  qp: 0,
+  requiredMaterials: [],
+  materialsWithOwned: [],
+  progressPercent: 100,
+}
 
 function formatNumber(value: number) {
   return NUMBER_FORMATTER.format(Number.isFinite(value) ? value : 0)
@@ -255,6 +263,7 @@ export default function TrackedServantDetailPage() {
   const [activeProgressTab, setActiveProgressTab] = useState<ProgressTab>("ascension")
   const [activeSkillTab, setActiveSkillTab] = useState(0)
   const [activeAppendSkillTab, setActiveAppendSkillTab] = useState(0)
+  const [totalRequirements, setTotalRequirements] = useState<RequirementTotals>(EMPTY_TOTALS)
 
   useEffect(() => { setState(readTrackedMaterialsState()) }, [])
   useEffect(() => { setActiveSkillTab(0); setActiveAppendSkillTab(0) }, [servantId])
@@ -300,10 +309,26 @@ export default function TrackedServantDetailPage() {
 
   const activeSkillRows = skillRowsBySkill[activeSkillTab] ?? []
   const activeAppendSkillRows = appendSkillRowsBySkill[activeAppendSkillTab] ?? []
-  const totalRequirements = useMemo(
-    () => (servant ? calculateServantRequirements(servant, state.ownedByMaterialId) : null),
-    [servant, state.ownedByMaterialId]
-  )
+  useEffect(() => {
+    if (!servant) {
+      setTotalRequirements(EMPTY_TOTALS)
+      return
+    }
+
+    let cancelled = false
+    computeServantRequirementsInWorker(servant, state.ownedByMaterialId)
+      .then((totals) => {
+        if (!cancelled) setTotalRequirements(totals)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setTotalRequirements(calculateServantRequirements(servant, state.ownedByMaterialId))
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [servant, state.ownedByMaterialId])
 
   const handleUpdateLevels = (nextAscension: number, nextSkills: SkillLevels) => {
     if (!servant) return
@@ -503,12 +528,12 @@ export default function TrackedServantDetailPage() {
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-sm font-semibold text-foreground">Total Materials Needed</h2>
             <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
-              <span>QP: {formatNumber(totalRequirements?.qp ?? 0)}</span>
-              <span>Progress: {(totalRequirements?.progressPercent ?? 0).toFixed(1)}%</span>
+              <span>QP: {formatNumber(totalRequirements.qp)}</span>
+              <span>Progress: {totalRequirements.progressPercent.toFixed(1)}%</span>
             </div>
           </div>
 
-          {totalRequirements && totalRequirements.materialsWithOwned.length > 0 ? (
+          {totalRequirements.materialsWithOwned.length > 0 ? (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {totalRequirements.materialsWithOwned.map((material) => (
                 <div

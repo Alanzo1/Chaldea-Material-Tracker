@@ -11,7 +11,8 @@ import { Boxes, Heart, Home, Pickaxe, Users } from "lucide-react"
 import { HEADER_ACTION_BUTTON_CLASS, HeaderActionLink } from "@/components/HeaderActionLink"
 import { PageHeader } from "@/components/PageHeader"
 import * as materialTracker from "@/lib/material-tracker"
-import type { TrackedMaterialsState } from "@/lib/material-tracker"
+import type { RequirementTotals, TrackedMaterialsState } from "@/lib/material-tracker"
+import { computeTrackerStateInWorker } from "@/lib/material-tracker-worker-client"
 import { cn } from "@/lib/utils"
 
 interface ServantIndexItem {
@@ -30,6 +31,13 @@ interface MaterialIndexItem {
 
 interface EfficiencyLookup {
   [materialId: number]: number
+}
+
+const EMPTY_TOTALS: RequirementTotals = {
+  qp: 0,
+  requiredMaterials: [],
+  materialsWithOwned: [],
+  progressPercent: 100,
 }
 
 const MaterialFarmingCard = dynamic(() => import("@/components/materials/MaterialFarmingCard"), {
@@ -200,6 +208,8 @@ export default function TrackMaterialsPage() {
   const [draggedServantId, setDraggedServantId] = useState<number | null>(null)
   const [efficiencyByMaterialId, setEfficiencyByMaterialId] = useState<EfficiencyLookup>({})
   const [expandedFarmingMaterialIds, setExpandedFarmingMaterialIds] = useState<number[]>([])
+  const [aggregate, setAggregate] = useState<RequirementTotals>(EMPTY_TOTALS)
+  const [perServantById, setPerServantById] = useState<Record<string, RequirementTotals>>({})
 
   useEffect(() => {
     setTrackerState(materialTracker.readTrackedMaterialsState())
@@ -220,7 +230,6 @@ export default function TrackMaterialsPage() {
     }
   }, [])
 
-  const aggregate = useMemo(() => materialTracker.calculateAggregateRequirements(trackerState), [trackerState])
   const trackedServantIds = useMemo(() => new Set(trackerState.servants.map((e) => e.servantId)), [trackerState.servants])
 
   const filteredSearchResults = useMemo(() => {
@@ -245,6 +254,32 @@ export default function TrackMaterialsPage() {
     const base = materialIndex.length ? materialIndex : aggregate.materialsWithOwned
     return base.slice(0, 500)
   }, [aggregate.materialsWithOwned, materialIndex])
+
+  useEffect(() => {
+    let cancelled = false
+    computeTrackerStateInWorker(trackerState)
+      .then((payload) => {
+        if (cancelled) return
+        setAggregate(payload.aggregate)
+        setPerServantById(payload.perServantById)
+      })
+      .catch(() => {
+        if (cancelled) return
+        const fallbackAggregate = materialTracker.calculateAggregateRequirements(trackerState)
+        const fallbackPerServantById = Object.fromEntries(
+          trackerState.servants.map((servant) => [
+            String(servant.servantId),
+            materialTracker.calculateServantRequirements(servant, trackerState.ownedByMaterialId),
+          ])
+        )
+        setAggregate(fallbackAggregate)
+        setPerServantById(fallbackPerServantById)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [trackerState])
 
   useEffect(() => {
     if (activeTab !== "farming" || !incompleteMaterials.length) return
@@ -412,7 +447,7 @@ export default function TrackMaterialsPage() {
             {/* Servant list */}
             <div className="grid gap-4">
               {trackerState.servants.map((servant) => {
-                const totals = materialTracker.calculateServantRequirements(servant, trackerState.ownedByMaterialId)
+                const totals = perServantById[String(servant.servantId)] ?? EMPTY_TOTALS
                 const remainingCount = totals.materialsWithOwned.filter((item) => item.remaining > 0).length
                 const progress = Math.min(100, Math.max(0, totals.progressPercent))
 

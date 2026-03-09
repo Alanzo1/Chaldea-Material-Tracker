@@ -3,6 +3,7 @@
 import Image from "next/image"
 import { useEffect, useMemo, useState } from "react"
 import * as materialTracker from "@/lib/material-tracker"
+import { computeTrackerStateInWorker } from "@/lib/material-tracker-worker-client"
 
 interface FarmingNode {
   id: number
@@ -134,12 +135,26 @@ export default function MaterialFarmingCard({
     if (!showOwnershipControls || !itemId) return
 
     const trackerState = materialTracker.readTrackedMaterialsState()
-    const aggregate = materialTracker.calculateAggregateRequirements(trackerState)
-    const material = aggregate.requiredMaterials.find((entry) => entry.id === itemId)
     const owned = Number(trackerState.ownedByMaterialId[String(itemId)] ?? 0)
-
     setOwnedQuantity(Number.isFinite(owned) ? Math.max(0, owned) : 0)
-    setTotalRequiredQuantity(material?.amount ?? 0)
+
+    let cancelled = false
+    computeTrackerStateInWorker(trackerState)
+      .then((payload) => {
+        if (cancelled) return
+        const material = payload.aggregate.requiredMaterials.find((entry) => entry.id === itemId)
+        setTotalRequiredQuantity(material?.amount ?? 0)
+      })
+      .catch(() => {
+        if (cancelled) return
+        const aggregate = materialTracker.calculateAggregateRequirements(trackerState)
+        const material = aggregate.requiredMaterials.find((entry) => entry.id === itemId)
+        setTotalRequiredQuantity(material?.amount ?? 0)
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [itemId, showOwnershipControls])
 
   useEffect(() => {
