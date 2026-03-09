@@ -120,18 +120,18 @@ function StageProgressCard({
   onOwnedChange: (id: number, value: string) => void
 }) {
   return (
-    <div className={`rounded-xl border ${borderColor} bg-white/[0.03] p-4`}>
+    <div className={`rounded-xl border ${borderColor} bg-card/60 p-4`}>
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-white/90">{row.label}</p>
-        <div className="flex items-center gap-3 text-[11px] text-white/35">
+        <p className="text-sm font-semibold text-foreground">{row.label}</p>
+        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
           <span>QP: {formatNumber(row.qp)}</span>
-          <span className="font-medium text-white/50">{row.progressPercent.toFixed(1)}%</span>
+          <span className="font-medium text-foreground/70">{row.progressPercent.toFixed(1)}%</span>
         </div>
       </div>
 
       {/* Progress bar */}
-      <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-white/8">
+      <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
         <div
           className={`h-full rounded-full transition-all duration-500 ${barColor}`}
           style={{ width: `${row.progressPercent}%` }}
@@ -144,7 +144,7 @@ function StageProgressCard({
           {row.materials.map((material) => (
             <div
               key={`${row.label}-${material.id}`}
-              className="rounded-lg border border-white/8 bg-black/20 p-2.5"
+              className="rounded-lg border border-border bg-background/50 p-2.5"
             >
               <div className="flex items-center gap-2">
                 <Image
@@ -154,11 +154,11 @@ function StageProgressCard({
                   height={24}
                   className="rounded-sm"
                 />
-                <span className="text-xs font-medium text-white/80 leading-tight">{material.name}</span>
+                <span className="text-xs font-medium text-foreground/90 leading-tight">{material.name}</span>
               </div>
 
-              <div className="mt-2 flex items-center gap-1 text-[10px] text-white/30">
-                <span>Need <span className="text-white/50">{material.amount}</span></span>
+              <div className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground">
+                <span>Need <span className="text-foreground/80">{material.amount}</span></span>
                 <span>·</span>
                 <span>Remaining <span className={material.remaining > 0 ? "text-red-400/70" : "text-emerald-400/70"}>{material.remaining}</span></span>
               </div>
@@ -169,7 +169,7 @@ function StageProgressCard({
                   min={0}
                   value={material.owned}
                   onChange={(e) => onOwnedChange(material.id, e.target.value)}
-                  className="w-full rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/80 placeholder:text-white/20 focus:border-white/20 focus:outline-none focus:ring-0"
+                  className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-0"
                   placeholder="Owned"
                 />
               </div>
@@ -177,7 +177,7 @@ function StageProgressCard({
           ))}
         </div>
       ) : (
-        <p className="mt-3 text-xs text-white/25">No materials for this stage.</p>
+        <p className="mt-3 text-xs text-muted-foreground">No materials for this stage.</p>
       )}
     </div>
   )
@@ -201,8 +201,8 @@ function TabBar({
           onClick={() => onChange(tab.key)}
           className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-all ${
             active === tab.key
-              ? "border-white/20 bg-white/10 text-white"
-              : "border-white/8 bg-transparent text-white/35 hover:border-white/15 hover:text-white/60"
+              ? "border-border bg-secondary text-secondary-foreground"
+              : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
           }`}
         >
           {tab.label}
@@ -225,14 +225,14 @@ function LevelSelect({
 }) {
   return (
     <div className="space-y-1.5">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">{label}</p>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
       <select
-        className="w-full rounded-md border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white/80 focus:border-white/20 focus:outline-none"
+        className="w-full rounded-md border border-input bg-background px-2.5 py-2 text-sm text-foreground focus:border-ring focus:outline-none"
         value={value}
         onChange={(e) => onChange(toNumber(e.target.value, 1))}
       >
         {options.map((opt) => (
-          <option key={opt.value} value={opt.value} className="bg-[#0f0d12]">
+          <option key={opt.value} value={opt.value}>
             {opt.label}
           </option>
         ))}
@@ -361,7 +361,7 @@ export default function TrackedServantDetailPage() {
           }
         />
         <div className="mx-auto max-w-5xl px-6 pt-8">
-          <p className="text-sm text-white/30">Tracked servant not found.</p>
+          <p className="text-sm text-muted-foreground">Tracked servant not found.</p>
         </div>
       </main>
     )
@@ -372,7 +372,7 @@ export default function TrackedServantDetailPage() {
     <main className="min-h-screen bg-background pb-16">
 
       {/* Ambient gradient */}
-      <div className="pointer-events-none fixed inset-0 bg-gradient-to-br from-amber-950/10 via-transparent to-violet-950/10" />
+      <div className="pointer-events-none fixed inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
 
       <PageHeader
         title={servant.servantName}
@@ -388,21 +388,21 @@ export default function TrackedServantDetailPage() {
       <div className="relative mx-auto flex max-w-6xl flex-col gap-5 px-5 pt-6 md:px-8">
 
         {/* ── Target Levels card ─────────────────────────────────────────── */}
-        <section className="rounded-xl border border-white/8 bg-white/[0.025] p-5">
+        <section className="rounded-xl border border-border bg-card/60 p-5">
           {/* Servant identity */}
-          <div className="flex items-center gap-4 border-b border-white/8 pb-4">
+          <div className="flex items-center gap-4 border-b border-border pb-4">
             {servant.portrait && (
               <Image
                 src={servant.portrait}
                 alt={servant.servantName}
                 width={56}
                 height={56}
-                className="rounded-lg border border-white/10"
+                className="rounded-lg border border-border"
               />
             )}
             <div>
-              <h2 className="text-base font-semibold text-white/90">Target Levels</h2>
-              <p className="mt-0.5 text-xs text-white/40">
+              <h2 className="text-base font-semibold text-foreground">Target Levels</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 {servant.className}{" "}
                 <span className={getStarColorClass(servant.rarity)}>
                   {"★".repeat(servant.rarity)}
@@ -453,8 +453,8 @@ export default function TrackedServantDetailPage() {
         </section>
 
         {/* ── Progress card ──────────────────────────────────────────────── */}
-        <section className="rounded-xl border border-white/8 bg-white/[0.025] p-5">
-          <h2 className="mb-4 text-sm font-semibold text-white/70">Progress</h2>
+        <section className="rounded-xl border border-border bg-card/60 p-5">
+          <h2 className="mb-4 text-sm font-semibold text-foreground">Progress</h2>
 
           {/* Top-level tab row */}
           <TabBar
@@ -493,16 +493,16 @@ export default function TrackedServantDetailPage() {
               />
             ))}
             {!activeRows.length && (
-              <p className="text-sm text-white/25">{emptyLabel}</p>
+              <p className="text-sm text-muted-foreground">{emptyLabel}</p>
             )}
           </div>
         </section>
 
         {/* ── Total materials needed card ───────────────────────────────── */}
-        <section className="rounded-xl border border-white/8 bg-white/[0.025] p-5">
+        <section className="rounded-xl border border-border bg-card/60 p-5">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold text-white/70">Total Materials Needed</h2>
-            <div className="flex items-center gap-4 text-[11px] text-white/40">
+            <h2 className="text-sm font-semibold text-foreground">Total Materials Needed</h2>
+            <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
               <span>QP: {formatNumber(totalRequirements?.qp ?? 0)}</span>
               <span>Progress: {(totalRequirements?.progressPercent ?? 0).toFixed(1)}%</span>
             </div>
@@ -513,7 +513,7 @@ export default function TrackedServantDetailPage() {
               {totalRequirements.materialsWithOwned.map((material) => (
                 <div
                   key={material.id}
-                  className="rounded-lg border border-white/8 bg-black/20 p-2.5"
+                  className="rounded-lg border border-border bg-background/50 p-2.5"
                 >
                   <div className="flex items-center gap-2">
                     <Image
@@ -523,13 +523,13 @@ export default function TrackedServantDetailPage() {
                       height={24}
                       className="rounded-sm"
                     />
-                    <span className="truncate text-xs font-medium text-white/80">
+                    <span className="truncate text-xs font-medium text-foreground/90">
                       {material.name}
                     </span>
                   </div>
-                  <div className="mt-2 flex items-center gap-1 text-[10px] text-white/30">
+                  <div className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground">
                     <span>
-                      Need <span className="text-white/50">{formatNumber(material.amount)}</span>
+                      Need <span className="text-foreground/80">{formatNumber(material.amount)}</span>
                     </span>
                     <span>·</span>
                     <span>
@@ -543,7 +543,7 @@ export default function TrackedServantDetailPage() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-white/25">No materials needed.</p>
+            <p className="text-sm text-muted-foreground">No materials needed.</p>
           )}
         </section>
       </div>

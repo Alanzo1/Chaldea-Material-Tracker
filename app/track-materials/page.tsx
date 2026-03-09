@@ -99,14 +99,14 @@ function Modal({
   children: React.ReactNode
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-xl border border-white/10 bg-[#0f0d12] shadow-2xl shadow-black/60">
-        <div className="flex items-center justify-between border-b border-white/8 px-5 py-4">
-          <h2 className="text-sm font-semibold text-white/90">{title}</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-2xl rounded-xl border border-border bg-card shadow-2xl">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <h2 className="text-sm font-semibold text-foreground">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-white/30 hover:text-white/70 transition-colors"
+            className="rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
           >
             <svg viewBox="0 0 14 14" className="size-4" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round">
               <path d="M1 1l12 12M13 1L1 13" />
@@ -258,7 +258,7 @@ export default function TrackMaterialsPage() {
 
   return (
     <main className="min-h-screen bg-background pb-16" suppressHydrationWarning>
-      <div className="pointer-events-none fixed inset-0 bg-gradient-to-br from-amber-950/10 via-transparent to-violet-950/10" />
+      <div className="pointer-events-none fixed inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
 
       <div className="sticky top-0 z-40 isolate">
         <PageHeader
@@ -304,14 +304,14 @@ export default function TrackMaterialsPage() {
         {activeTab === "tracker" && (
           <>
             {/* Summary card */}
-            <section className="rounded-xl border border-white/8 bg-white/[0.025] p-5">
+            <section className="rounded-xl border border-border bg-card/60 p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">Total QP Needed</p>
-                  <p className="mt-1 text-2xl font-semibold text-white/90">{formatNumber(aggregate.qp)}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total QP Needed</p>
+                  <p className="mt-1 text-2xl font-semibold text-foreground">{formatNumber(aggregate.qp)}</p>
                 </div>
                 <div className="w-full sm:w-48">
-                  <label className="block text-[10px] font-bold uppercase tracking-widest text-white/30 mb-1.5">
+                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                     Current QP
                   </label>
                   <input
@@ -319,19 +319,19 @@ export default function TrackMaterialsPage() {
                     min={0}
                     value={currentQpInput}
                     onChange={(e) => handleCurrentQpChange(e.target.value)}
-                    className="w-full rounded-md border border-white/10 bg-white/5 px-2.5 py-2 text-sm text-white/80 focus:border-white/20 focus:outline-none"
+                    className="w-full rounded-md border border-input bg-background px-2.5 py-2 text-sm text-foreground focus:border-ring focus:outline-none"
                   />
-                  <p className="mt-1.5 text-xs text-white/30">
-                    Remaining: <span className="text-white/55">{formatNumber(Math.max(0, aggregate.qp - currentQp))}</span>
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    Remaining: <span className="text-foreground/80">{formatNumber(Math.max(0, aggregate.qp - currentQp))}</span>
                   </p>
                 </div>
               </div>
               <div className="mt-4">
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">Overall Progress</span>
-                  <span className="text-xs font-medium text-white/50">{overallProgress.toFixed(1)}%</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Overall Progress</span>
+                  <span className="text-xs font-medium text-foreground/70">{overallProgress.toFixed(1)}%</span>
                 </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/8">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                   <div className="h-full rounded-full bg-sky-500 transition-all duration-500" style={{ width: `${overallProgress}%` }} />
                 </div>
               </div>
@@ -339,7 +339,7 @@ export default function TrackMaterialsPage() {
 
             {/* Add servant button */}
             <div className="flex items-center justify-between">
-              <p className="text-xs text-white/30">
+              <p className="text-xs text-muted-foreground">
                 {trackerState.servants.length} servant{trackerState.servants.length === 1 ? "" : "s"} · drag to reorder
               </p>
               <button
@@ -376,20 +376,20 @@ export default function TrackMaterialsPage() {
                       setDraggedServantId(null)
                     }}
                     onClick={() => router.push(`/track-materials/${servant.servantId}`)}
-                    className="group cursor-pointer rounded-xl border border-white/8 bg-white/[0.025] p-5 transition-all hover:border-white/15 hover:bg-white/[0.04]"
+                    className="group cursor-pointer rounded-xl border border-border bg-card/60 p-5 transition-all hover:bg-muted/30"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-4">
                         {servant.portrait && (
-                          <Image src={servant.portrait} alt={servant.servantName} width={64} height={64} className="rounded-lg border border-white/10" />
+                          <Image src={servant.portrait} alt={servant.servantName} width={64} height={64} className="rounded-lg border border-border" />
                         )}
                         <div>
-                          <p className="text-base font-semibold text-white/90">{servant.servantName}</p>
-                          <p className="mt-1 text-sm text-white/40">
+                          <p className="text-base font-semibold text-foreground">{servant.servantName}</p>
+                          <p className="mt-1 text-sm text-muted-foreground">
                             {servant.className}{" "}
                             <span className={getStarColorClass(servant.rarity)}>{"★".repeat(servant.rarity)}</span>
                           </p>
-                          <p className="mt-1.5 text-xs text-white/25">
+                          <p className="mt-1.5 text-xs text-muted-foreground">
                             Asc {servant.ascensionLevel >= 5 ? "Max" : servant.ascensionLevel} · Skills {formatSkillLevels(servant.skillLevels)} · Append {formatSkillLevels(servant.appendSkillLevels)}
                           </p>
                         </div>
@@ -397,16 +397,16 @@ export default function TrackMaterialsPage() {
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); handleRemoveServant(servant.servantId) }}
-                        className="rounded-md border border-white/8 bg-transparent px-2.5 py-1.5 text-[11px] text-white/30 opacity-0 transition-all group-hover:opacity-100 hover:border-red-500/30 hover:text-red-400"
+                        className="rounded-md border border-border bg-transparent px-2.5 py-1.5 text-[11px] text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:border-destructive/40 hover:text-destructive"
                       >
                         Remove
                       </button>
                     </div>
                     <div className="mt-4">
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/8">
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                         <div className="h-full rounded-full bg-emerald-500 transition-all duration-500" style={{ width: `${progress}%` }} />
                       </div>
-                      <div className="mt-2 flex items-center justify-between text-xs text-white/25">
+                      <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
                         <span>{progress.toFixed(1)}% complete</span>
                         <span>{remainingCount} material type{remainingCount === 1 ? "" : "s"} remaining</span>
                       </div>
@@ -415,12 +415,12 @@ export default function TrackMaterialsPage() {
                 )
               })}
               {!trackerState.servants.length && (
-                <div className="rounded-xl border border-dashed border-white/10 p-10 text-center">
-                  <p className="text-sm text-white/25">No servants tracked yet.</p>
+                <div className="rounded-xl border border-dashed border-border p-10 text-center">
+                  <p className="text-sm text-muted-foreground">No servants tracked yet.</p>
                   <button
                     type="button"
                     onClick={() => { setSearchQuery(""); setIsSearchOpen(true) }}
-                    className="mt-3 text-xs text-amber-400/70 hover:text-amber-400 transition-colors underline underline-offset-2"
+                    className="mt-3 text-xs text-primary transition-colors hover:text-primary/80 underline underline-offset-2"
                   >
                     Add your first servant
                   </button>
@@ -432,36 +432,36 @@ export default function TrackMaterialsPage() {
 
         {/* ── MATERIALS TAB ───────────────────────────────────────────────── */}
         {activeTab === "materials" && (
-          <section className="rounded-xl border border-white/8 bg-white/[0.025] p-5">
+          <section className="rounded-xl border border-border bg-card/60 p-5">
             <div className="mb-4">
-              <h2 className="text-sm font-semibold text-white/90">Total Materials Needed</h2>
-              <p className="mt-0.5 text-xs text-white/30">Click a material to view details and edit owned quantity.</p>
+              <h2 className="text-sm font-semibold text-foreground">Total Materials Needed</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">Click a material to view details and edit owned quantity.</p>
             </div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {aggregate.materialsWithOwned.map((material) => (
                 <Link
                   key={material.id}
                   href={`/material/${material.id}?name=${encodeURIComponent(material.name)}&icon=${encodeURIComponent(material.icon)}&returnTo=${encodeURIComponent("/track-materials")}`}
-                  className="group flex items-center gap-3 rounded-lg border border-white/8 bg-black/20 p-3 transition-all hover:border-white/15 hover:bg-white/5"
+                  className="group flex items-center gap-3 rounded-lg border border-border bg-background/40 p-3 transition-all hover:bg-muted/40"
                 >
                   <Image src={material.icon} alt={material.name} width={28} height={28} className="rounded-md" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium text-white/80">{material.name}</p>
-                    <div className="mt-1 flex items-center gap-2 text-[10px] text-white/30">
-                      <span>Need <span className="text-white/50">{formatNumber(material.amount)}</span></span>
+                    <p className="truncate text-xs font-medium text-foreground/90">{material.name}</p>
+                    <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
+                      <span>Need <span className="text-foreground/80">{formatNumber(material.amount)}</span></span>
                       <span>·</span>
                       <span className={material.remaining > 0 ? "text-red-400/60" : "text-emerald-400/60"}>
                         {material.remaining > 0 ? `${formatNumber(material.remaining)} left` : "Complete"}
                       </span>
                     </div>
                   </div>
-                  <svg className="size-3.5 flex-shrink-0 text-white/15 group-hover:text-white/40 transition-colors" fill="none" viewBox="0 0 16 16" stroke="currentColor" strokeWidth={1.75}>
+                  <svg className="size-3.5 flex-shrink-0 text-muted-foreground/60 transition-colors group-hover:text-foreground/80" fill="none" viewBox="0 0 16 16" stroke="currentColor" strokeWidth={1.75}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 4l4 4-4 4" />
                   </svg>
                 </Link>
               ))}
               {!aggregate.materialsWithOwned.length && (
-                <p className="col-span-3 text-sm text-white/25">No materials needed yet.</p>
+                <p className="col-span-3 text-sm text-muted-foreground">No materials needed yet.</p>
               )}
             </div>
           </section>
@@ -471,18 +471,18 @@ export default function TrackMaterialsPage() {
         {activeTab === "farming" && (
           <section>
             <div className="mb-4">
-              <h2 className="text-sm font-semibold text-white/90">Farming Summary</h2>
-              <p className="mt-0.5 text-xs text-white/30">Incomplete materials sorted by best AP/drop efficiency.</p>
+              <h2 className="text-sm font-semibold text-foreground">Farming Summary</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">Incomplete materials sorted by best AP/drop efficiency.</p>
             </div>
-            <div className="overflow-hidden rounded-xl border border-white/8">
+            <div className="overflow-hidden rounded-xl border border-border">
               {/* Table head */}
-              <div className="hidden grid-cols-[minmax(0,1fr)_120px_120px_100px] gap-3 border-b border-white/8 bg-white/[0.03] px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-white/25 sm:grid">
+              <div className="hidden grid-cols-[minmax(0,1fr)_120px_120px_100px] gap-3 border-b border-border bg-card/70 px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground sm:grid">
                 <p>Material</p>
                 <p className="text-right">Remaining</p>
                 <p className="text-right">AP / Drop</p>
                 <p className="text-right">Details</p>
               </div>
-              <div className="divide-y divide-white/5">
+              <div className="divide-y divide-border/70">
                 {farmingSortedMaterials.map((material) => {
                   const bestAp = Number(efficiencyByMaterialId[material.id] ?? Infinity)
                   const isExpanded = expandedFarmingMaterialIds.includes(material.id)
@@ -492,11 +492,11 @@ export default function TrackMaterialsPage() {
                       <div className="grid items-center gap-3 sm:grid-cols-[minmax(0,1fr)_120px_120px_100px]">
                         <div className="flex min-w-0 items-center gap-2.5">
                           <Image src={material.icon} alt={material.name} width={26} height={26} className="rounded-md" />
-                          <p className="truncate text-sm font-medium text-white/80">{material.name}</p>
+                          <p className="truncate text-sm font-medium text-foreground/90">{material.name}</p>
                         </div>
-                        <p className="text-xs text-white/40 sm:text-right">{formatNumber(material.remaining)}</p>
-                        <p className="text-xs text-white/40 sm:text-right">
-                          {Number.isFinite(bestAp) ? bestAp.toFixed(1) : <span className="text-white/20">—</span>}
+                        <p className="text-xs text-muted-foreground sm:text-right">{formatNumber(material.remaining)}</p>
+                        <p className="text-xs text-muted-foreground sm:text-right">
+                          {Number.isFinite(bestAp) ? bestAp.toFixed(1) : <span className="text-muted-foreground/60">—</span>}
                         </p>
                         <div className="flex justify-start sm:justify-end">
                           <button
@@ -504,7 +504,7 @@ export default function TrackMaterialsPage() {
                             onClick={() => setExpandedFarmingMaterialIds((cur) =>
                               cur.includes(material.id) ? cur.filter((id) => id !== material.id) : [...cur, material.id]
                             )}
-                            className="rounded-md border border-white/10 bg-white/4 px-2.5 py-1 text-[11px] text-white/40 hover:border-white/20 hover:text-white/70 transition-all"
+                            className="rounded-md border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
                           >
                             {isExpanded ? "Hide" : "Details"}
                           </button>
@@ -517,7 +517,7 @@ export default function TrackMaterialsPage() {
                   )
                 })}
                 {!farmingSortedMaterials.length && (
-                  <p className="p-6 text-center text-sm text-white/25">No incomplete materials.</p>
+                  <p className="p-6 text-center text-sm text-muted-foreground">No incomplete materials.</p>
                 )}
               </div>
             </div>
@@ -533,7 +533,7 @@ export default function TrackMaterialsPage() {
             placeholder="Search by name or class..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 placeholder:text-white/25 focus:border-white/20 focus:outline-none"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
           />
           <div className="mt-3 max-h-[52vh] space-y-1 overflow-y-auto pr-1">
             {filteredSearchResults.map((servant) => (
@@ -542,17 +542,17 @@ export default function TrackMaterialsPage() {
                 type="button"
                 onClick={() => handleAddServant(servant)}
                 disabled={addingServantId === servant.id}
-                className="flex w-full items-center justify-between rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2.5 text-left transition-all hover:border-white/15 hover:bg-white/5 disabled:opacity-50"
+                className="flex w-full items-center justify-between rounded-lg border border-border bg-background/50 px-3 py-2.5 text-left transition-all hover:bg-muted/40 disabled:opacity-50"
               >
                 <div>
-                  <p className="text-sm font-medium text-white/80">{servant.name}</p>
-                  <p className="mt-0.5 text-xs text-white/30">{servant.className}</p>
+                  <p className="text-sm font-medium text-foreground/90">{servant.name}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{servant.className}</p>
                 </div>
                 <span className={`text-sm ${getStarColorClass(servant.rarity)}`}>{"★".repeat(servant.rarity)}</span>
               </button>
             ))}
             {!filteredSearchResults.length && (
-              <p className="py-4 text-center text-sm text-white/25">No matching servants.</p>
+              <p className="py-4 text-center text-sm text-muted-foreground">No matching servants.</p>
             )}
           </div>
         </Modal>
@@ -566,7 +566,7 @@ export default function TrackMaterialsPage() {
             placeholder="Search material name..."
             value={materialSearchQuery}
             onChange={(e) => setMaterialSearchQuery(e.target.value)}
-            className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 placeholder:text-white/25 focus:border-white/20 focus:outline-none"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
           />
           <div className="mt-3 max-h-[58vh] space-y-1.5 overflow-y-auto pr-1">
             {filteredMaterialResults.map((material) => {
@@ -575,11 +575,11 @@ export default function TrackMaterialsPage() {
               const ownedAmount = Number(trackerState.ownedByMaterialId[String(material.id)] ?? 0)
 
               return (
-                <div key={material.id} className="flex items-center gap-3 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2.5">
+                <div key={material.id} className="flex items-center gap-3 rounded-lg border border-border bg-background/50 px-3 py-2.5">
                   <Image src={material.icon} alt={material.name} width={22} height={22} className="rounded-sm flex-shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium text-white/80">{material.name}</p>
-                    <p className="text-[10px] text-white/25">
+                    <p className="truncate text-xs font-medium text-foreground/90">{material.name}</p>
+                    <p className="text-[10px] text-muted-foreground">
                       Need {formatNumber(neededAmount)} · Owned {formatNumber(ownedAmount)}
                     </p>
                   </div>
@@ -589,7 +589,7 @@ export default function TrackMaterialsPage() {
                       min={0}
                       value={pendingOwnedByMaterialId[material.id] ?? String(Math.max(0, ownedAmount))}
                       onChange={(e) => setPendingOwnedByMaterialId((prev) => ({ ...prev, [material.id]: e.target.value }))}
-                      className="w-20 rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white/80 focus:border-white/20 focus:outline-none"
+                      className="w-20 rounded-md border border-input bg-background px-2 py-1.5 text-xs text-foreground focus:border-ring focus:outline-none"
                     />
                     <button
                       type="button"
@@ -603,7 +603,7 @@ export default function TrackMaterialsPage() {
               )
             })}
             {!filteredMaterialResults.length && (
-              <p className="py-4 text-center text-sm text-white/25">No matching materials.</p>
+              <p className="py-4 text-center text-sm text-muted-foreground">No matching materials.</p>
             )}
           </div>
         </Modal>
