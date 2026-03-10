@@ -327,7 +327,7 @@ export default function TrackMaterialsPage() {
         portrait: String(payload.portrait ?? servant.portrait ?? ""),
         ascensionLevel: 5,
         skillLevels: [10, 10, 10],
-        appendSkillLevels: [0, 0, 0],
+        appendSkillLevels: [1, 1, 1],
         ascensionMaterials: payload.ascensionMaterials ?? {},
         skillMaterials: payload.skillMaterials ?? {},
         appendSkillMaterials: payload.appendSkillMaterials ?? {},

@@ -167,7 +167,7 @@ export function ServantHeaderCard({
                     value={appendSkillLevel1}
                     onChange={(event) => setAppendSkillLevel1(Number(event.target.value))}
                   >
-                    {Array.from({ length: 11 }, (_, index) => index).map((level) => (
+                    {Array.from({ length: 10 }, (_, index) => index + 1).map((level) => (
                       <option key={level} value={level}>
                         {level}
                       </option>
@@ -181,7 +181,7 @@ export function ServantHeaderCard({
                     value={appendSkillLevel2}
                     onChange={(event) => setAppendSkillLevel2(Number(event.target.value))}
                   >
-                    {Array.from({ length: 11 }, (_, index) => index).map((level) => (
+                    {Array.from({ length: 10 }, (_, index) => index + 1).map((level) => (
                       <option key={level} value={level}>
                         {level}
                       </option>
@@ -195,7 +195,7 @@ export function ServantHeaderCard({
                     value={appendSkillLevel3}
                     onChange={(event) => setAppendSkillLevel3(Number(event.target.value))}
                   >
-                    {Array.from({ length: 11 }, (_, index) => index).map((level) => (
+                    {Array.from({ length: 10 }, (_, index) => index + 1).map((level) => (
                       <option key={level} value={level}>
                         {level}
                       </option>

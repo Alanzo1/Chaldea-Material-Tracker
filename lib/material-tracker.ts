@@ -108,6 +108,11 @@ function normalizeSkillLevels(levels: unknown): SkillLevels {
   return normalized
 }
 
+function normalizeAppendSkillLevels(levels: unknown): SkillLevels {
+  const normalized = normalizeSkillLevels(levels)
+  return normalized.map((level) => Math.max(1, level)) as SkillLevels
+}
+
 function normalizeMaterialMap(value: unknown): MaterialStageMap {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {}
   return value as MaterialStageMap
@@ -134,7 +139,7 @@ function normalizeServantEntry(value: unknown): TrackedServantEntry | null {
     portrait: portrait || undefined,
     ascensionLevel,
     skillLevels: normalizeSkillLevels(item.skillLevels),
-    appendSkillLevels: normalizeSkillLevels(item.appendSkillLevels),
+    appendSkillLevels: normalizeAppendSkillLevels(item.appendSkillLevels),
     ascensionMaterials: normalizeMaterialMap(item.ascensionMaterials),
     skillMaterials: normalizeMaterialMap(item.skillMaterials),
     appendSkillMaterials: normalizeMaterialMap(item.appendSkillMaterials),
@@ -258,7 +263,7 @@ export function updateTrackedServantLevels(params: {
             ...entry,
             ascensionLevel: Math.min(5, Math.max(1, toNumber(ascensionLevel, 1))),
             skillLevels: normalizeSkillLevels(skillLevels),
-            appendSkillLevels: normalizeSkillLevels(appendSkillLevels ?? entry.appendSkillLevels),
+            appendSkillLevels: normalizeAppendSkillLevels(appendSkillLevels ?? entry.appendSkillLevels),
           }
         : entry
     ),

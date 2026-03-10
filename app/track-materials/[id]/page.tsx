@@ -465,8 +465,8 @@ export default function TrackedServantDetailPage() {
               <LevelSelect
                 key={i}
                 label={`Append Skill ${i + 1}`}
-                value={servant.appendSkillLevels[i]}
-                options={Array.from({ length: 11 }, (_, l) => ({ value: l, label: String(l) }))}
+                value={Math.max(1, servant.appendSkillLevels[i])}
+                options={Array.from({ length: 10 }, (_, l) => ({ value: l + 1, label: String(l + 1) }))}
                 onChange={(v) => {
                   const next = [...servant.appendSkillLevels] as SkillLevels
                   next[i] = v
