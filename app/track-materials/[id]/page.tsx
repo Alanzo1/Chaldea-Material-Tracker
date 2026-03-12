@@ -11,9 +11,9 @@ import {
   readTrackedMaterialsState,
   setOwnedMaterialQuantity,
   updateTrackedServantLevels,
+  writeTrackedMaterialsState,
   type SkillLevels,
   type TrackedMaterial,
-  type TrackedServantEntry,
   type TrackedMaterialsState,
 } from "@/lib/material-tracker"
 import { computeServantRequirementsInWorker } from "@/lib/material-tracker-worker-client"
@@ -27,7 +27,25 @@ interface StageProgressRow {
   progressPercent: number
 }
 
+interface UpgradeCostMaterial {
+  id: number
+  name: string
+  amount: number
+}
+
+interface SkillUpgradeStatus {
+  currentLevel: number
+  nextLevel: number | null
+  qpCost: number
+  materials: UpgradeCostMaterial[]
+  missingQp: number
+  missingMaterials: Array<UpgradeCostMaterial & { owned: number; missing: number }>
+  canUpgrade: boolean
+  reason: string
+}
+
 const NUMBER_FORMATTER = new Intl.NumberFormat("en-US")
+const TRACKER_CURRENT_QP_KEY = "trackerCurrentQp"
 const EMPTY_TOTALS: RequirementTotals = {
   qp: 0,
   requiredMaterials: [],
@@ -42,6 +60,136 @@ function formatNumber(value: number) {
 function toNumber(value: unknown, fallback = 0) {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function toWholeNumber(value: unknown, fallback = 0) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return fallback
+  return Math.max(0, Math.floor(parsed))
+}
+
+function normalizeSkillLevel(level: unknown) {
+  return Math.min(10, Math.max(1, toWholeNumber(level, 1)))
+}
+
+function getStageCostMaterials(stage: unknown) {
+  const materialTotals = new Map<number, UpgradeCostMaterial>()
+  const items = Array.isArray((stage as { items?: unknown[] } | null)?.items)
+    ? ((stage as { items?: unknown[] }).items ?? [])
+    : []
+
+  items.forEach((entry) => {
+    const row = entry as { amount?: unknown; item?: { id?: unknown; name?: unknown } }
+    const id = toWholeNumber(row?.item?.id, 0)
+    const amount = toWholeNumber(row?.amount, 0)
+    if (!id || amount <= 0) return
+
+    const name = String(row?.item?.name ?? `Material ${id}`).trim() || `Material ${id}`
+    const existing = materialTotals.get(id)
+    if (existing) {
+      existing.amount += amount
+      return
+    }
+
+    materialTotals.set(id, { id, name, amount })
+  })
+
+  return [...materialTotals.values()].sort((a, b) => a.name.localeCompare(b.name))
+}
+
+function getSkillUpgradeStatus(params: {
+  stageMap: Record<string, unknown> | undefined
+  currentLevel: number
+  ownedByMaterialId: Record<string, number>
+  currentQp: number
+}) {
+  const normalizedLevel = normalizeSkillLevel(params.currentLevel)
+
+  if (normalizedLevel >= 10) {
+    return {
+      currentLevel: normalizedLevel,
+      nextLevel: null,
+      qpCost: 0,
+      materials: [],
+      missingQp: 0,
+      missingMaterials: [],
+      canUpgrade: false,
+      reason: "Max level",
+    } as SkillUpgradeStatus
+  }
+
+  const stageKey = String(normalizedLevel)
+  const stage = params.stageMap?.[stageKey]
+  if (!stage || typeof stage !== "object") {
+    return {
+      currentLevel: normalizedLevel,
+      nextLevel: normalizedLevel + 1,
+      qpCost: 0,
+      materials: [],
+      missingQp: 0,
+      missingMaterials: [],
+      canUpgrade: false,
+      reason: "Missing upgrade data",
+    } as SkillUpgradeStatus
+  }
+
+  const qpCost = toWholeNumber((stage as { qp?: unknown }).qp, 0)
+  const materials = getStageCostMaterials(stage)
+  const missingMaterials = materials
+    .map((material) => {
+      const owned = toWholeNumber(params.ownedByMaterialId[String(material.id)] ?? 0, 0)
+      const missing = Math.max(0, material.amount - owned)
+      return { ...material, owned, missing }
+    })
+    .filter((item) => item.missing > 0)
+  const missingQp = Math.max(0, qpCost - params.currentQp)
+  const canUpgrade = missingQp === 0 && missingMaterials.length === 0
+
+  return {
+    currentLevel: normalizedLevel,
+    nextLevel: normalizedLevel + 1,
+    qpCost,
+    materials,
+    missingQp,
+    missingMaterials,
+    canUpgrade,
+    reason: canUpgrade
+      ? "Ready"
+      : missingQp > 0
+      ? "Not enough QP"
+      : "Not enough materials",
+  } as SkillUpgradeStatus
+}
+
+function getUpgradeHelperText(status: SkillUpgradeStatus) {
+  if (status.currentLevel >= 10 || !status.nextLevel) return "Max level"
+  const materialCount = status.materials.reduce((sum, item) => sum + item.amount, 0)
+
+  if (status.canUpgrade) {
+    return `Lv ${status.currentLevel}→${status.nextLevel} · QP ${formatNumber(status.qpCost)} · Mats ${formatNumber(materialCount)}`
+  }
+
+  const missingParts: string[] = []
+  if (status.missingQp > 0) missingParts.push(`QP ${formatNumber(status.missingQp)}`)
+  if (status.missingMaterials.length > 0) {
+    const missingMaterialCount = status.missingMaterials.reduce((sum, item) => sum + item.missing, 0)
+    missingParts.push(`Mats ${formatNumber(missingMaterialCount)}`)
+  }
+
+  if (missingParts.length) {
+    return `Missing ${missingParts.join(" · ")}`
+  }
+
+  return status.reason
+}
+
+function writeCurrentQpToStorage(value: number) {
+  if (typeof window === "undefined") return
+  try {
+    window.localStorage.setItem(TRACKER_CURRENT_QP_KEY, String(Math.max(0, Math.floor(value))))
+  } catch {
+    // no-op
+  }
 }
 
 function getStarColorClass(rarity: number) {
@@ -225,26 +373,50 @@ function LevelSelect({
   value,
   options,
   onChange,
+  action,
 }: {
   label: string
   value: number
   options: { value: number; label: string }[]
   onChange: (value: number) => void
+  action?: {
+    label: string
+    onClick: () => void
+    disabled?: boolean
+    title?: string
+    helperText?: string
+  }
 }) {
   return (
     <div className="space-y-1.5">
       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
-      <select
-        className="w-full rounded-md border border-input bg-background px-2.5 py-2 text-sm text-foreground focus:border-ring focus:outline-none"
-        value={value}
-        onChange={(e) => onChange(toNumber(e.target.value, 1))}
-      >
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
+      <div className="flex items-center gap-2">
+        <select
+          className="w-full rounded-md border border-input bg-background px-2.5 py-2 text-sm text-foreground focus:border-ring focus:outline-none"
+          value={value}
+          onChange={(e) => onChange(toNumber(e.target.value, 1))}
+        >
+          {options.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        {action ? (
+          <button
+            type="button"
+            onClick={action.onClick}
+            disabled={action.disabled}
+            title={action.title}
+            className="min-w-20 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-2 text-xs font-medium text-emerald-400 transition-all hover:border-emerald-500/50 hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:border-border disabled:bg-muted/50 disabled:text-muted-foreground"
+          >
+            {action.label}
+          </button>
+        ) : null}
+      </div>
+      {action?.helperText ? (
+        <p className="text-[10px] text-muted-foreground">{action.helperText}</p>
+      ) : null}
     </div>
   )
 }
@@ -264,8 +436,17 @@ export default function TrackedServantDetailPage() {
   const [activeSkillTab, setActiveSkillTab] = useState(0)
   const [activeAppendSkillTab, setActiveAppendSkillTab] = useState(0)
   const [totalRequirements, setTotalRequirements] = useState<RequirementTotals>(EMPTY_TOTALS)
+  const [currentQpInput, setCurrentQpInput] = useState("0")
 
-  useEffect(() => { setState(readTrackedMaterialsState()) }, [])
+  useEffect(() => {
+    setState(readTrackedMaterialsState())
+    try {
+      const rawQp = window.localStorage.getItem(TRACKER_CURRENT_QP_KEY)
+      setCurrentQpInput(String(toWholeNumber(rawQp, 0)))
+    } catch {
+      setCurrentQpInput("0")
+    }
+  }, [])
   useEffect(() => { setActiveSkillTab(0); setActiveAppendSkillTab(0) }, [servantId])
 
   const servant = useMemo(
@@ -309,6 +490,30 @@ export default function TrackedServantDetailPage() {
 
   const activeSkillRows = skillRowsBySkill[activeSkillTab] ?? []
   const activeAppendSkillRows = appendSkillRowsBySkill[activeAppendSkillTab] ?? []
+  const currentQp = toWholeNumber(currentQpInput === "" ? 0 : currentQpInput, 0)
+  const skillUpgradeStatusByIndex = useMemo(() => {
+    if (!servant) return [null, null, null] as Array<SkillUpgradeStatus | null>
+    return [0, 1, 2].map((index) =>
+      getSkillUpgradeStatus({
+        stageMap: servant.skillMaterials as Record<string, unknown> | undefined,
+        currentLevel: servant.skillLevels[index],
+        ownedByMaterialId: state.ownedByMaterialId,
+        currentQp,
+      })
+    )
+  }, [currentQp, servant, state.ownedByMaterialId])
+  const appendSkillUpgradeStatusByIndex = useMemo(() => {
+    if (!servant) return [null, null, null] as Array<SkillUpgradeStatus | null>
+    return [0, 1, 2].map((index) =>
+      getSkillUpgradeStatus({
+        stageMap: servant.appendSkillMaterials as Record<string, unknown> | undefined,
+        currentLevel: servant.appendSkillLevels[index],
+        ownedByMaterialId: state.ownedByMaterialId,
+        currentQp,
+      })
+    )
+  }, [currentQp, servant, state.ownedByMaterialId])
+
   useEffect(() => {
     if (!servant) {
       setTotalRequirements(EMPTY_TOTALS)
@@ -354,6 +559,124 @@ export default function TrackedServantDetailPage() {
     const parsed = Number(value)
     const safeValue = Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0
     setState(setOwnedMaterialQuantity(materialId, safeValue))
+  }
+
+  const handleCurrentQpChange = (value: string) => {
+    if (value === "") {
+      setCurrentQpInput("")
+      writeCurrentQpToStorage(0)
+      return
+    }
+
+    const safeValue = toWholeNumber(value, 0)
+    setCurrentQpInput(String(safeValue))
+    writeCurrentQpToStorage(safeValue)
+  }
+
+  const handleUpgradeSkill = (skillIndex: number) => {
+    if (!servant) return
+    if (skillIndex < 0 || skillIndex > 2) return
+
+    const latestState = readTrackedMaterialsState()
+    const latestServant = latestState.servants.find((entry) => entry.servantId === servant.servantId)
+    if (!latestServant) return
+
+    const currentQpValue = toWholeNumber(currentQpInput === "" ? 0 : currentQpInput, 0)
+    const upgradeStatus = getSkillUpgradeStatus({
+      stageMap: latestServant.skillMaterials as Record<string, unknown> | undefined,
+      currentLevel: latestServant.skillLevels[skillIndex],
+      ownedByMaterialId: latestState.ownedByMaterialId,
+      currentQp: currentQpValue,
+    })
+
+    if (!upgradeStatus.canUpgrade || !upgradeStatus.nextLevel) return
+
+    const nextOwnedByMaterialId = { ...latestState.ownedByMaterialId }
+    for (const material of upgradeStatus.materials) {
+      const key = String(material.id)
+      const ownedAmount = toWholeNumber(nextOwnedByMaterialId[key] ?? 0, 0)
+      if (ownedAmount < material.amount) return
+      const remaining = ownedAmount - material.amount
+      if (remaining <= 0) {
+        delete nextOwnedByMaterialId[key]
+      } else {
+        nextOwnedByMaterialId[key] = remaining
+      }
+    }
+
+    const nextSkillLevels = [...latestServant.skillLevels] as SkillLevels
+    const normalizedCurrentLevel = normalizeSkillLevel(nextSkillLevels[skillIndex])
+    if (normalizedCurrentLevel >= 10) return
+    nextSkillLevels[skillIndex] = normalizedCurrentLevel + 1
+
+    const nextState: TrackedMaterialsState = {
+      ...latestState,
+      ownedByMaterialId: nextOwnedByMaterialId,
+      servants: latestState.servants.map((entry) =>
+        entry.servantId === latestServant.servantId
+          ? { ...entry, skillLevels: nextSkillLevels }
+          : entry
+      ),
+    }
+
+    const nextQp = Math.max(0, currentQpValue - upgradeStatus.qpCost)
+    writeTrackedMaterialsState(nextState)
+    writeCurrentQpToStorage(nextQp)
+    setCurrentQpInput(String(nextQp))
+    setState(nextState)
+  }
+
+  const handleUpgradeAppendSkill = (skillIndex: number) => {
+    if (!servant) return
+    if (skillIndex < 0 || skillIndex > 2) return
+
+    const latestState = readTrackedMaterialsState()
+    const latestServant = latestState.servants.find((entry) => entry.servantId === servant.servantId)
+    if (!latestServant) return
+
+    const currentQpValue = toWholeNumber(currentQpInput === "" ? 0 : currentQpInput, 0)
+    const upgradeStatus = getSkillUpgradeStatus({
+      stageMap: latestServant.appendSkillMaterials as Record<string, unknown> | undefined,
+      currentLevel: latestServant.appendSkillLevels[skillIndex],
+      ownedByMaterialId: latestState.ownedByMaterialId,
+      currentQp: currentQpValue,
+    })
+
+    if (!upgradeStatus.canUpgrade || !upgradeStatus.nextLevel) return
+
+    const nextOwnedByMaterialId = { ...latestState.ownedByMaterialId }
+    for (const material of upgradeStatus.materials) {
+      const key = String(material.id)
+      const ownedAmount = toWholeNumber(nextOwnedByMaterialId[key] ?? 0, 0)
+      if (ownedAmount < material.amount) return
+      const remaining = ownedAmount - material.amount
+      if (remaining <= 0) {
+        delete nextOwnedByMaterialId[key]
+      } else {
+        nextOwnedByMaterialId[key] = remaining
+      }
+    }
+
+    const nextAppendSkillLevels = [...latestServant.appendSkillLevels] as SkillLevels
+    const normalizedCurrentLevel = normalizeSkillLevel(nextAppendSkillLevels[skillIndex])
+    if (normalizedCurrentLevel >= 10) return
+    nextAppendSkillLevels[skillIndex] = normalizedCurrentLevel + 1
+
+    const nextState: TrackedMaterialsState = {
+      ...latestState,
+      ownedByMaterialId: nextOwnedByMaterialId,
+      servants: latestState.servants.map((entry) =>
+        entry.servantId === latestServant.servantId
+          ? { ...entry, appendSkillLevels: nextAppendSkillLevels }
+          : entry
+      ),
+    }
+
+    const nextQp = Math.max(0, currentQpValue - upgradeStatus.qpCost)
+    writeTrackedMaterialsState(nextState)
+    writeCurrentQpToStorage(nextQp)
+    setCurrentQpInput(String(nextQp))
+    setState(nextState)
   }
 
   // ─── Active progress tab data ───────────────────────────────────────────────
@@ -415,24 +738,38 @@ export default function TrackedServantDetailPage() {
         {/* ── Target Levels card ─────────────────────────────────────────── */}
         <section className="rounded-xl border border-border bg-card/60 p-5">
           {/* Servant identity */}
-          <div className="flex items-center gap-4 border-b border-border pb-4">
-            {servant.portrait && (
-              <Image
-                src={servant.portrait}
-                alt={servant.servantName}
-                width={56}
-                height={56}
-                className="rounded-lg border border-border"
+          <div className="flex flex-wrap items-center gap-4 border-b border-border pb-4">
+            <div className="flex min-w-0 items-center gap-4">
+              {servant.portrait && (
+                <Image
+                  src={servant.portrait}
+                  alt={servant.servantName}
+                  width={56}
+                  height={56}
+                  className="rounded-lg border border-border"
+                />
+              )}
+              <div>
+                <h2 className="text-base font-semibold text-foreground">Target Levels</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {servant.className}{" "}
+                  <span className={getStarColorClass(servant.rarity)}>
+                    {"★".repeat(servant.rarity)}
+                  </span>
+                </p>
+              </div>
+            </div>
+            <div className="w-full sm:ml-auto sm:max-w-44">
+              <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Current QP
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={currentQpInput}
+                onChange={(e) => handleCurrentQpChange(e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-2.5 py-2 text-sm text-foreground focus:border-ring focus:outline-none"
               />
-            )}
-            <div>
-              <h2 className="text-base font-semibold text-foreground">Target Levels</h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {servant.className}{" "}
-                <span className={getStarColorClass(servant.rarity)}>
-                  {"★".repeat(servant.rarity)}
-                </span>
-              </p>
             </div>
           </div>
 
@@ -444,36 +781,58 @@ export default function TrackedServantDetailPage() {
               options={[1,2,3,4,5].map((v) => ({ value: v, label: v === 5 ? "Max" : String(v) }))}
               onChange={(v) => handleUpdateLevels(v, servant.skillLevels)}
             />
-            {[0, 1, 2].map((i) => (
-              <LevelSelect
-                key={i}
-                label={`Skill ${i + 1}`}
-                value={servant.skillLevels[i]}
-                options={Array.from({ length: 10 }, (_, l) => ({ value: l + 1, label: String(l + 1) }))}
-                onChange={(v) => {
-                  const next = [...servant.skillLevels] as SkillLevels
-                  next[i] = v
-                  handleUpdateLevels(servant.ascensionLevel, next)
-                }}
-              />
-            ))}
+            {[0, 1, 2].map((i) => {
+              const upgradeStatus = skillUpgradeStatusByIndex[i]
+              const helperText = upgradeStatus ? getUpgradeHelperText(upgradeStatus) : undefined
+              return (
+                <LevelSelect
+                  key={i}
+                  label={`Skill ${i + 1}`}
+                  value={servant.skillLevels[i]}
+                  options={Array.from({ length: 10 }, (_, l) => ({ value: l + 1, label: String(l + 1) }))}
+                  onChange={(v) => {
+                    const next = [...servant.skillLevels] as SkillLevels
+                    next[i] = v
+                    handleUpdateLevels(servant.ascensionLevel, next)
+                  }}
+                  action={{
+                    label: "upgrade",
+                    onClick: () => handleUpgradeSkill(i),
+                    disabled: !upgradeStatus?.canUpgrade,
+                    title: helperText,
+                    helperText,
+                  }}
+                />
+              )
+            })}
           </div>
 
           {/* Append skills */}
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {[0, 1, 2].map((i) => (
-              <LevelSelect
-                key={i}
-                label={`Append Skill ${i + 1}`}
-                value={Math.max(1, servant.appendSkillLevels[i])}
-                options={Array.from({ length: 10 }, (_, l) => ({ value: l + 1, label: String(l + 1) }))}
-                onChange={(v) => {
-                  const next = [...servant.appendSkillLevels] as SkillLevels
-                  next[i] = v
-                  handleUpdateAppendLevels(next)
-                }}
-              />
-            ))}
+            {[0, 1, 2].map((i) => {
+              const upgradeStatus = appendSkillUpgradeStatusByIndex[i]
+              const helperText = upgradeStatus ? getUpgradeHelperText(upgradeStatus) : undefined
+              return (
+                <LevelSelect
+                  key={i}
+                  label={`Append Skill ${i + 1}`}
+                  value={Math.max(1, servant.appendSkillLevels[i])}
+                  options={Array.from({ length: 10 }, (_, l) => ({ value: l + 1, label: String(l + 1) }))}
+                  onChange={(v) => {
+                    const next = [...servant.appendSkillLevels] as SkillLevels
+                    next[i] = v
+                    handleUpdateAppendLevels(next)
+                  }}
+                  action={{
+                    label: "upgrade",
+                    onClick: () => handleUpgradeAppendSkill(i),
+                    disabled: !upgradeStatus?.canUpgrade,
+                    title: helperText,
+                    helperText,
+                  }}
+                />
+              )
+            })}
           </div>
         </section>
 
