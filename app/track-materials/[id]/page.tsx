@@ -44,6 +44,11 @@ interface SkillUpgradeStatus {
   reason: string
 }
 
+interface UpgradeUndoSnapshot {
+  state: TrackedMaterialsState
+  qp: number
+}
+
 const NUMBER_FORMATTER = new Intl.NumberFormat("en-US")
 const TRACKER_CURRENT_QP_KEY = "trackerCurrentQp"
 const EMPTY_TOTALS: RequirementTotals = {
@@ -190,6 +195,10 @@ function writeCurrentQpToStorage(value: number) {
   } catch {
     // no-op
   }
+}
+
+function cloneTrackedState(state: TrackedMaterialsState) {
+  return JSON.parse(JSON.stringify(state)) as TrackedMaterialsState
 }
 
 function getStarColorClass(rarity: number) {
@@ -437,6 +446,7 @@ export default function TrackedServantDetailPage() {
   const [activeAppendSkillTab, setActiveAppendSkillTab] = useState(0)
   const [totalRequirements, setTotalRequirements] = useState<RequirementTotals>(EMPTY_TOTALS)
   const [currentQpInput, setCurrentQpInput] = useState("0")
+  const [lastUpgradeUndoSnapshot, setLastUpgradeUndoSnapshot] = useState<UpgradeUndoSnapshot | null>(null)
 
   useEffect(() => {
     setState(readTrackedMaterialsState())
@@ -537,6 +547,7 @@ export default function TrackedServantDetailPage() {
 
   const handleUpdateLevels = (nextAscension: number, nextSkills: SkillLevels) => {
     if (!servant) return
+    setLastUpgradeUndoSnapshot(null)
     setState(updateTrackedServantLevels({
       servantId: servant.servantId,
       ascensionLevel: nextAscension,
@@ -547,6 +558,7 @@ export default function TrackedServantDetailPage() {
 
   const handleUpdateAppendLevels = (nextAppendSkills: SkillLevels) => {
     if (!servant) return
+    setLastUpgradeUndoSnapshot(null)
     setState(updateTrackedServantLevels({
       servantId: servant.servantId,
       ascensionLevel: servant.ascensionLevel,
@@ -558,10 +570,12 @@ export default function TrackedServantDetailPage() {
   const handleOwnedQuantityChange = (materialId: number, value: string) => {
     const parsed = Number(value)
     const safeValue = Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0
+    setLastUpgradeUndoSnapshot(null)
     setState(setOwnedMaterialQuantity(materialId, safeValue))
   }
 
   const handleCurrentQpChange = (value: string) => {
+    setLastUpgradeUndoSnapshot(null)
     if (value === "") {
       setCurrentQpInput("")
       writeCurrentQpToStorage(0)
@@ -620,6 +634,10 @@ export default function TrackedServantDetailPage() {
     }
 
     const nextQp = Math.max(0, currentQpValue - upgradeStatus.qpCost)
+    setLastUpgradeUndoSnapshot({
+      state: cloneTrackedState(latestState),
+      qp: currentQpValue,
+    })
     writeTrackedMaterialsState(nextState)
     writeCurrentQpToStorage(nextQp)
     setCurrentQpInput(String(nextQp))
@@ -673,10 +691,23 @@ export default function TrackedServantDetailPage() {
     }
 
     const nextQp = Math.max(0, currentQpValue - upgradeStatus.qpCost)
+    setLastUpgradeUndoSnapshot({
+      state: cloneTrackedState(latestState),
+      qp: currentQpValue,
+    })
     writeTrackedMaterialsState(nextState)
     writeCurrentQpToStorage(nextQp)
     setCurrentQpInput(String(nextQp))
     setState(nextState)
+  }
+
+  const handleUndoLastUpgrade = () => {
+    if (!lastUpgradeUndoSnapshot) return
+    writeTrackedMaterialsState(lastUpgradeUndoSnapshot.state)
+    writeCurrentQpToStorage(lastUpgradeUndoSnapshot.qp)
+    setCurrentQpInput(String(lastUpgradeUndoSnapshot.qp))
+    setState(lastUpgradeUndoSnapshot.state)
+    setLastUpgradeUndoSnapshot(null)
   }
 
   // ─── Active progress tab data ───────────────────────────────────────────────
@@ -770,6 +801,15 @@ export default function TrackedServantDetailPage() {
                 onChange={(e) => handleCurrentQpChange(e.target.value)}
                 className="w-full rounded-md border border-input bg-background px-2.5 py-2 text-sm text-foreground focus:border-ring focus:outline-none"
               />
+              <button
+                type="button"
+                onClick={handleUndoLastUpgrade}
+                disabled={!lastUpgradeUndoSnapshot}
+                className="mt-2 w-full rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[11px] font-medium text-amber-400 transition-all hover:border-amber-500/50 hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:border-border disabled:bg-muted/50 disabled:text-muted-foreground"
+                title="Undo the last skill/append upgrade"
+              >
+                Undo Last Upgrade
+              </button>
             </div>
           </div>
 
