@@ -1,8 +1,9 @@
 "use client"
 
 import Image from "next/image"
+import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { useParams } from "next/navigation"
+import { useParams, usePathname } from "next/navigation"
 import { ArrowLeft, Home, ListChecks } from "lucide-react"
 
 import {
@@ -256,6 +257,11 @@ function buildStageProgressRows(
   return rows
 }
 
+function getMaterialHref(material: { id: number; name: string; icon: string }, returnTo: string) {
+  if (!material.id) return null
+  return `/material/${material.id}?name=${encodeURIComponent(material.name)}&icon=${encodeURIComponent(material.icon)}&returnTo=${encodeURIComponent(returnTo)}`
+}
+
 // ─── Tab config ──────────────────────────────────────────────────────────────
 const PROGRESS_TABS = [
   { key: "ascension",    label: "Ascension",     color: "amber"  },
@@ -284,6 +290,8 @@ function StageProgressCard({
   borderColor: string
   onOwnedChange: (id: number, value: string) => void
 }) {
+  const pathname = usePathname()
+
   return (
     <div className={`rounded-xl border ${borderColor} bg-card/60 p-4`}>
       {/* Header */}
@@ -312,14 +320,38 @@ function StageProgressCard({
               className="rounded-lg border border-border bg-background/50 p-2.5"
             >
               <div className="flex items-center gap-2">
-                <Image
-                  src={material.icon}
-                  alt={material.name}
-                  width={24}
-                  height={24}
-                  className="rounded-sm"
-                />
-                <span className="text-xs font-medium text-foreground/90 leading-tight">{material.name}</span>
+                {(() => {
+                  const href = getMaterialHref(material, pathname || "/track-materials")
+                  if (!href) {
+                    return (
+                      <>
+                        <Image
+                          src={material.icon}
+                          alt={material.name}
+                          width={24}
+                          height={24}
+                          className="rounded-sm"
+                        />
+                        <span className="text-xs font-medium text-foreground/90 leading-tight">{material.name}</span>
+                      </>
+                    )
+                  }
+
+                  return (
+                    <Link href={href} className="inline-flex items-center gap-2 rounded-sm hover:opacity-90">
+                      <Image
+                        src={material.icon}
+                        alt={material.name}
+                        width={24}
+                        height={24}
+                        className="rounded-sm"
+                      />
+                      <span className="text-xs font-medium text-foreground/90 leading-tight underline-offset-2 hover:underline">
+                        {material.name}
+                      </span>
+                    </Link>
+                  )
+                })()}
               </div>
 
               <div className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground">
