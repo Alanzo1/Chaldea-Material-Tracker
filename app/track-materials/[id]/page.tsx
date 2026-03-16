@@ -966,37 +966,75 @@ export default function TrackedServantDetailPage() {
 
           {totalRequirements.materialsWithOwned.length > 0 ? (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {totalRequirements.materialsWithOwned.map((material) => (
-                <div
-                  key={material.id}
-                  className="rounded-lg border border-border bg-background/50 p-2.5"
-                >
-                  <div className="flex items-center gap-2">
-                    <Image
-                      src={material.icon}
-                      alt={material.name}
-                      width={24}
-                      height={24}
-                      className="rounded-sm"
-                    />
-                    <span className="truncate text-xs font-medium text-foreground/90">
-                      {material.name}
-                    </span>
-                  </div>
-                  <div className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground">
-                    <span>
-                      Need <span className="text-foreground/80">{formatNumber(material.amount)}</span>
-                    </span>
-                    <span>·</span>
-                    <span>
-                      Remaining{" "}
-                      <span className={material.remaining > 0 ? "text-red-400/70" : "text-emerald-400/70"}>
-                        {formatNumber(material.remaining)}
+              {totalRequirements.materialsWithOwned.map((material) => {
+                const href = getMaterialHref(material, `/track-materials/${servant.servantId}`)
+                if (!href) {
+                  return (
+                    <div
+                      key={material.id}
+                      className="rounded-lg border border-border bg-background/50 p-2.5"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Image
+                          src={material.icon}
+                          alt={material.name}
+                          width={24}
+                          height={24}
+                          className="rounded-sm"
+                        />
+                        <span className="truncate text-xs font-medium text-foreground/90">
+                          {material.name}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <span>
+                          Need <span className="text-foreground/80">{formatNumber(material.amount)}</span>
+                        </span>
+                        <span>·</span>
+                        <span>
+                          Remaining{" "}
+                          <span className={material.remaining > 0 ? "text-red-400/70" : "text-emerald-400/70"}>
+                            {formatNumber(material.remaining)}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                  )
+                }
+
+                return (
+                  <Link
+                    key={material.id}
+                    href={href}
+                    className="group rounded-lg border border-border bg-background/50 p-2.5 transition-all hover:bg-muted/40"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Image
+                        src={material.icon}
+                        alt={material.name}
+                        width={24}
+                        height={24}
+                        className="rounded-sm"
+                      />
+                      <span className="truncate text-xs font-medium text-foreground/90 underline-offset-2 group-hover:underline">
+                        {material.name}
                       </span>
-                    </span>
-                  </div>
-                </div>
-              ))}
+                    </div>
+                    <div className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <span>
+                        Need <span className="text-foreground/80">{formatNumber(material.amount)}</span>
+                      </span>
+                      <span>·</span>
+                      <span>
+                        Remaining{" "}
+                        <span className={material.remaining > 0 ? "text-red-400/70" : "text-emerald-400/70"}>
+                          {formatNumber(material.remaining)}
+                        </span>
+                      </span>
+                    </div>
+                  </Link>
+                )
+              })}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">No materials needed.</p>
