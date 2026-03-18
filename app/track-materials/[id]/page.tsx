@@ -78,6 +78,10 @@ function normalizeSkillLevel(level: unknown) {
   return Math.min(10, Math.max(1, toWholeNumber(level, 1)))
 }
 
+function normalizeAscensionLevel(level: unknown) {
+  return Math.min(5, Math.max(1, toWholeNumber(level, 1)))
+}
+
 function getStageCostMaterials(stage: unknown) {
   const materialTotals = new Map<number, UpgradeCostMaterial>()
   const items = Array.isArray((stage as { items?: unknown[] } | null)?.items)
@@ -167,12 +171,98 @@ function getSkillUpgradeStatus(params: {
   } as SkillUpgradeStatus
 }
 
+function getAscensionUpgradeStatus(params: {
+  stageMap: Record<string, unknown> | undefined
+  currentLevel: number
+  ownedByMaterialId: Record<string, number>
+  currentQp: number
+}) {
+  const normalizedLevel = normalizeAscensionLevel(params.currentLevel)
+
+  if (normalizedLevel >= 5) {
+    return {
+      currentLevel: normalizedLevel,
+      nextLevel: null,
+      qpCost: 0,
+      materials: [],
+      missingQp: 0,
+      missingMaterials: [],
+      canUpgrade: false,
+      reason: "Max level",
+    } as SkillUpgradeStatus
+  }
+
+  const stageKey = String(Math.max(0, normalizedLevel - 1))
+  const stage = params.stageMap?.[stageKey]
+  if (!stage || typeof stage !== "object") {
+    return {
+      currentLevel: normalizedLevel,
+      nextLevel: normalizedLevel + 1,
+      qpCost: 0,
+      materials: [],
+      missingQp: 0,
+      missingMaterials: [],
+      canUpgrade: false,
+      reason: "Missing upgrade data",
+    } as SkillUpgradeStatus
+  }
+
+  const qpCost = toWholeNumber((stage as { qp?: unknown }).qp, 0)
+  const materials = getStageCostMaterials(stage)
+  const missingMaterials = materials
+    .map((material) => {
+      const owned = toWholeNumber(params.ownedByMaterialId[String(material.id)] ?? 0, 0)
+      const missing = Math.max(0, material.amount - owned)
+      return { ...material, owned, missing }
+    })
+    .filter((item) => item.missing > 0)
+  const missingQp = Math.max(0, qpCost - params.currentQp)
+  const canUpgrade = missingQp === 0 && missingMaterials.length === 0
+
+  return {
+    currentLevel: normalizedLevel,
+    nextLevel: normalizedLevel + 1,
+    qpCost,
+    materials,
+    missingQp,
+    missingMaterials,
+    canUpgrade,
+    reason: canUpgrade
+      ? "Ready"
+      : missingQp > 0
+      ? "Not enough QP"
+      : "Not enough materials",
+  } as SkillUpgradeStatus
+}
+
 function getUpgradeHelperText(status: SkillUpgradeStatus) {
   if (status.currentLevel >= 10 || !status.nextLevel) return "Max level"
   const materialCount = status.materials.reduce((sum, item) => sum + item.amount, 0)
 
   if (status.canUpgrade) {
     return `Lv ${status.currentLevel}→${status.nextLevel} · QP ${formatNumber(status.qpCost)} · Mats ${formatNumber(materialCount)}`
+  }
+
+  const missingParts: string[] = []
+  if (status.missingQp > 0) missingParts.push(`QP ${formatNumber(status.missingQp)}`)
+  if (status.missingMaterials.length > 0) {
+    const missingMaterialCount = status.missingMaterials.reduce((sum, item) => sum + item.missing, 0)
+    missingParts.push(`Mats ${formatNumber(missingMaterialCount)}`)
+  }
+
+  if (missingParts.length) {
+    return `Missing ${missingParts.join(" · ")}`
+  }
+
+  return status.reason
+}
+
+function getAscensionUpgradeHelperText(status: SkillUpgradeStatus) {
+  if (status.currentLevel >= 5 || !status.nextLevel) return "Max level"
+  const materialCount = status.materials.reduce((sum, item) => sum + item.amount, 0)
+
+  if (status.canUpgrade) {
+    return `Asc ${status.currentLevel}→${status.nextLevel} · QP ${formatNumber(status.qpCost)} · Mats ${formatNumber(materialCount)}`
   }
 
   const missingParts: string[] = []
@@ -533,6 +623,15 @@ export default function TrackedServantDetailPage() {
   const activeSkillRows = skillRowsBySkill[activeSkillTab] ?? []
   const activeAppendSkillRows = appendSkillRowsBySkill[activeAppendSkillTab] ?? []
   const currentQp = toWholeNumber(currentQpInput === "" ? 0 : currentQpInput, 0)
+  const ascensionUpgradeStatus = useMemo(() => {
+    if (!servant) return null
+    return getAscensionUpgradeStatus({
+      stageMap: servant.ascensionMaterials as Record<string, unknown> | undefined,
+      currentLevel: servant.ascensionLevel,
+      ownedByMaterialId: state.ownedByMaterialId,
+      currentQp,
+    })
+  }, [currentQp, servant, state.ownedByMaterialId])
   const skillUpgradeStatusByIndex = useMemo(() => {
     if (!servant) return [null, null, null] as Array<SkillUpgradeStatus | null>
     return [0, 1, 2].map((index) =>
@@ -661,6 +760,61 @@ export default function TrackedServantDetailPage() {
       servants: latestState.servants.map((entry) =>
         entry.servantId === latestServant.servantId
           ? { ...entry, skillLevels: nextSkillLevels }
+          : entry
+      ),
+    }
+
+    const nextQp = Math.max(0, currentQpValue - upgradeStatus.qpCost)
+    setLastUpgradeUndoSnapshot({
+      state: cloneTrackedState(latestState),
+      qp: currentQpValue,
+    })
+    writeTrackedMaterialsState(nextState)
+    writeCurrentQpToStorage(nextQp)
+    setCurrentQpInput(String(nextQp))
+    setState(nextState)
+  }
+
+  const handleUpgradeAscension = () => {
+    if (!servant) return
+
+    const latestState = readTrackedMaterialsState()
+    const latestServant = latestState.servants.find((entry) => entry.servantId === servant.servantId)
+    if (!latestServant) return
+
+    const currentQpValue = toWholeNumber(currentQpInput === "" ? 0 : currentQpInput, 0)
+    const upgradeStatus = getAscensionUpgradeStatus({
+      stageMap: latestServant.ascensionMaterials as Record<string, unknown> | undefined,
+      currentLevel: latestServant.ascensionLevel,
+      ownedByMaterialId: latestState.ownedByMaterialId,
+      currentQp: currentQpValue,
+    })
+
+    if (!upgradeStatus.canUpgrade || !upgradeStatus.nextLevel) return
+
+    const nextOwnedByMaterialId = { ...latestState.ownedByMaterialId }
+    for (const material of upgradeStatus.materials) {
+      const key = String(material.id)
+      const ownedAmount = toWholeNumber(nextOwnedByMaterialId[key] ?? 0, 0)
+      if (ownedAmount < material.amount) return
+      const remaining = ownedAmount - material.amount
+      if (remaining <= 0) {
+        delete nextOwnedByMaterialId[key]
+      } else {
+        nextOwnedByMaterialId[key] = remaining
+      }
+    }
+
+    const normalizedCurrentAscension = normalizeAscensionLevel(latestServant.ascensionLevel)
+    if (normalizedCurrentAscension >= 5) return
+    const nextAscensionLevel = normalizedCurrentAscension + 1
+
+    const nextState: TrackedMaterialsState = {
+      ...latestState,
+      ownedByMaterialId: nextOwnedByMaterialId,
+      servants: latestState.servants.map((entry) =>
+        entry.servantId === latestServant.servantId
+          ? { ...entry, ascensionLevel: nextAscensionLevel }
           : entry
       ),
     }
@@ -838,7 +992,7 @@ export default function TrackedServantDetailPage() {
                 onClick={handleUndoLastUpgrade}
                 disabled={!lastUpgradeUndoSnapshot}
                 className="mt-2 w-full rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[11px] font-medium text-amber-400 transition-all hover:border-amber-500/50 hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:border-border disabled:bg-muted/50 disabled:text-muted-foreground"
-                title="Undo the last skill/append upgrade"
+                title="Undo the last upgrade"
               >
                 Undo Last Upgrade
               </button>
@@ -852,6 +1006,13 @@ export default function TrackedServantDetailPage() {
               value={servant.ascensionLevel}
               options={[1,2,3,4,5].map((v) => ({ value: v, label: v === 5 ? "Max" : String(v) }))}
               onChange={(v) => handleUpdateLevels(v, servant.skillLevels)}
+              action={{
+                label: "upgrade",
+                onClick: handleUpgradeAscension,
+                disabled: !ascensionUpgradeStatus?.canUpgrade,
+                title: ascensionUpgradeStatus ? getAscensionUpgradeHelperText(ascensionUpgradeStatus) : undefined,
+                helperText: ascensionUpgradeStatus ? getAscensionUpgradeHelperText(ascensionUpgradeStatus) : undefined,
+              }}
             />
             {[0, 1, 2].map((i) => {
               const upgradeStatus = skillUpgradeStatusByIndex[i]

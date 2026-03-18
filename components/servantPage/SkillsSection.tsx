@@ -198,6 +198,11 @@ function shouldHideLevelRow(label: string) {
   )
 }
 
+function shouldHideSkillLevelRow(label: string) {
+  const normalized = label.toLowerCase()
+  return shouldHideLevelRow(label) || normalized.includes("overcharge")
+}
+
 function isDemeritStateFunction(func: any, label: string) {
   const normalizedLabel = label.toLowerCase()
   if (normalizedLabel.includes("staying up late")) return true
@@ -257,7 +262,7 @@ function getRows(skill: SkillLike) {
 
   ;(skill.functions ?? []).forEach((func: any, funcIndex: number) => {
     const label = getFunctionLabel(func) || `Effect ${funcIndex + 1}`
-    if (shouldHideLevelRow(label)) return
+    if (shouldHideSkillLevelRow(label)) return
     if (isDemeritStateFunction(func, label)) return
     const values = levels.map((_, index) => {
       const value = func?.svals?.[index]?.Value
