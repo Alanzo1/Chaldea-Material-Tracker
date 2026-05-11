@@ -1,5 +1,3 @@
-import { unstable_cache } from "next/cache"
-
 const BASE_URL = "https://api.atlasacademy.io"
 
 function capitalizeFirstLetter(val: string) {
@@ -152,7 +150,7 @@ function transformServantsForHomePage(data: any[]) {
                 ...(servant.skills ?? []),
                 ...(servant.noblePhantasms ?? []),
             ];
-        
+
             allSources.forEach((source: any) => {
                 const sourceName = normalizeSourceName(source.name);
 
@@ -248,64 +246,98 @@ function transformServantsForHomePage(data: any[]) {
         })
 }
 
-export const getServantsHomePageIndex = unstable_cache(
-    async (region = "NA") => {
-        try {
-            const response = await fetch(`${BASE_URL}/export/${region}/nice_servant.json`, {
-                next: {
-                    revalidate: 3600,
-                },
-            })
+// --- Unified servants cache ---
+//
+// Both the servants index and servant detail endpoints derive from the same
+// nice_servant.json payload. A single fetch populates both, so servant detail
+// requests never need to call the individual /nice/NA/svt/{id} endpoint at all.
+// This eliminates the Atlas rate-limit 500s that individual-per-servant fetches
+// triggered under concurrent load.
 
-            if (!response.ok) {
-                throw new Error("Failed to fetch servants.")
-            }
+export type ServantData = {
+    id: number
+    name: string
+    className: string
+    rarity: number
+    portrait: string | null
+    ascensionMaterials: Record<string, unknown>
+    skillMaterials: Record<string, unknown>
+    appendSkillMaterials: Record<string, unknown>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    raw: any
+}
 
-            const data = await response.json()
-            return transformServantsForHomePage(data)
-        } catch (error) {
-            console.error("Servants index fallback to empty list:", error)
-            return []
-        }
-    },
-    ["servants-homepage-index"],
-    {
-        revalidate: 3600,
-    }
-)
+type ServantsCache = {
+    index: ReturnType<typeof transformServantsForHomePage>
+    details: Map<number, ServantData>
+    expiry: number
+}
 
-const getCachedServantData = unstable_cache(
-    async (svt_id: number, region = "NA") => {
-        const response = await fetch(`${BASE_URL}/nice/${region}/svt/${svt_id}`, {
-            next: {
-                revalidate: 3600,
-                tags: [`atlas:servant:${svt_id}`],
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error("Failed to fetch servant.");
-        }
-        const servant = await response.json();
-
-        return {
-            id: servant.id,
-            name: servant.name,
-            className: servant.className,
-            rarity: servant.rarity,
+function extractServantDetails(data: any[]): Map<number, ServantData> {
+    const map = new Map<number, ServantData>()
+    for (const s of data) {
+        const id = Number(s?.id)
+        if (!id) continue
+        map.set(id, {
+            id,
+            name: s.name,
+            className: s.className,
+            rarity: s.rarity,
             portrait:
-                servant.extraAssets?.faces?.ascension?.["1"] ??
-                servant.extraAssets?.faces?.ascension?.[1] ??
+                s.extraAssets?.faces?.ascension?.["1"] ??
+                s.extraAssets?.faces?.ascension?.[1] ??
                 null,
-            raw: servant,
-        };
-    },
-    ["servant-data-by-id"],
-    {
-        revalidate: 3600,
+            ascensionMaterials: s.ascensionMaterials ?? {},
+            skillMaterials: s.skillMaterials ?? {},
+            appendSkillMaterials: s.appendSkillMaterials ?? {},
+            raw: s,
+        })
     }
-)
+    return map
+}
 
-export const getServantData = async (svt_id: number, region = "NA") => {
-    return getCachedServantData(svt_id, region)
+let servantsCache: ServantsCache | null = null
+let servantsInflight: Promise<ServantsCache> | null = null
+
+async function fetchServants(region: string): Promise<ServantsCache> {
+    try {
+        const response = await fetch(`${BASE_URL}/export/${region}/nice_servant.json`, {
+            next: { revalidate: 3600 },
+        })
+        if (!response.ok) throw new Error(`Atlas returned ${response.status}`)
+        const data = await response.json()
+        return {
+            index: transformServantsForHomePage(data),
+            details: extractServantDetails(data),
+            expiry: Date.now() + 3_600_000,
+        }
+    } catch (error) {
+        console.error("Servants fetch failed:", error)
+        // Short TTL on error so the next request retries promptly
+        return { index: [], details: new Map(), expiry: Date.now() + 60_000 }
+    }
+}
+
+function getOrFetchServants(region: string): Promise<ServantsCache> {
+    if (servantsCache && Date.now() < servantsCache.expiry) {
+        return Promise.resolve(servantsCache)
+    }
+    if (!servantsInflight) {
+        servantsInflight = fetchServants(region)
+            .then(cache => { servantsCache = cache; return cache })
+            .finally(() => { servantsInflight = null })
+    }
+    return servantsInflight
+}
+
+export async function getServantsHomePageIndex(region = "NA") {
+    const cache = await getOrFetchServants(region)
+    return cache.index
+}
+
+export async function getServantData(svt_id: number, region = "NA") {
+    const cache = await getOrFetchServants(region)
+    const detail = cache.details.get(svt_id)
+    if (!detail) throw new Error(`Servant ${svt_id} not found`)
+    return detail
 }

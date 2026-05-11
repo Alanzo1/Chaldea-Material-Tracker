@@ -25,9 +25,9 @@ export async function GET(_request: Request, context: RouteContext) {
       className: servant.className,
       rarity: servant.rarity,
       portrait: servant.portrait,
-      ascensionMaterials: servant.raw?.ascensionMaterials ?? {},
-      skillMaterials: servant.raw?.skillMaterials ?? {},
-      appendSkillMaterials: servant.raw?.appendSkillMaterials ?? {},
+      ascensionMaterials: servant.ascensionMaterials ?? {},
+      skillMaterials: servant.skillMaterials ?? {},
+      appendSkillMaterials: servant.appendSkillMaterials ?? {},
     })
   } catch (error) {
     return NextResponse.json(

@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build:drops": "node scripts/build-drop-data.mjs",
+    "load:traffic": "node scripts/load-traffic.mjs",
     "prebuild": "npm run build:drops",
     "dev": "next dev",
     "build": "next build --webpack",
