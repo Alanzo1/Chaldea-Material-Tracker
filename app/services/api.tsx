@@ -302,7 +302,10 @@ let servantsInflight: Promise<ServantsCache> | null = null
 async function fetchServants(region: string): Promise<ServantsCache> {
     try {
         const response = await fetch(`${BASE_URL}/export/${region}/nice_servant.json`, {
-            next: { revalidate: 3600 },
+            // This payload is ~50MB+ and exceeds Next.js Data Cache item limits.
+            // We deliberately bypass fetch data-cache and rely on our in-memory
+            // cache (servantsCache/servantsInflight) for reuse and deduping.
+            cache: "no-store",
         })
         if (!response.ok) throw new Error(`Atlas returned ${response.status}`)
         const data = await response.json()

@@ -14,6 +14,7 @@ const DEFAULTS = {
   durationSeconds: 20,
   concurrency: 25,
   timeoutMs: 8_000,
+  healthPath: "/api/health",
 }
 
 const DEFAULT_SERVANT_IDS = [1, 6, 13, 60, 84, 120, 150, 188, 215, 230]
@@ -25,6 +26,8 @@ function parseArgs(argv) {
     durationSeconds: DEFAULTS.durationSeconds,
     concurrency: DEFAULTS.concurrency,
     timeoutMs: DEFAULTS.timeoutMs,
+    healthPath: DEFAULTS.healthPath,
+    skipPreflight: false,
   }
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -59,6 +62,18 @@ function parseArgs(argv) {
       i += 1
       continue
     }
+
+    if (arg === "--health-path" && next) {
+      const value = String(next).trim()
+      options.healthPath = value.startsWith("/") ? value : `/${value}`
+      i += 1
+      continue
+    }
+
+    if (arg === "--skip-preflight") {
+      options.skipPreflight = true
+      continue
+    }
   }
 
   return options
@@ -72,11 +87,14 @@ Options:
   --duration      Test duration in seconds (default: ${DEFAULTS.durationSeconds})
   --concurrency   Number of parallel workers (default: ${DEFAULTS.concurrency})
   --timeout       Request timeout in ms (default: ${DEFAULTS.timeoutMs})
+  --health-path   Health endpoint path (default: ${DEFAULTS.healthPath})
+  --skip-preflight Skip startup health check
   --help          Show this help
 
 Examples:
   node scripts/load-traffic.mjs
   node scripts/load-traffic.mjs --base-url http://localhost:3000 --duration 30 --concurrency 50
+  node scripts/load-traffic.mjs --base-url http://127.0.0.1:3000 --health-path /api/health
 `)
 }
 
@@ -125,16 +143,41 @@ async function timedFetch(url, timeoutMs) {
   } catch (error) {
     const durationMs = performance.now() - startedAt
     const timedOut = error?.name === "AbortError"
+    const errorCode =
+      typeof error === "object" &&
+      error !== null &&
+      "cause" in error &&
+      typeof error.cause === "object" &&
+      error.cause !== null &&
+      "code" in error.cause
+        ? String(error.cause.code)
+        : ""
+
     return {
       ok: false,
       status: timedOut ? 408 : 0,
       durationMs,
       timedOut,
       error: error instanceof Error ? error.message : String(error),
+      errorCode,
     }
   } finally {
     clearTimeout(timeout)
   }
+}
+
+async function runPreflight(baseUrl, healthPath, timeoutMs) {
+  const healthUrl = `${baseUrl}${healthPath}`
+  const result = await timedFetch(healthUrl, Math.min(timeoutMs, 4_000))
+
+  if (!result.ok) {
+    const codeSuffix = result.errorCode ? ` code=${result.errorCode}` : ""
+    throw new Error(
+      `Preflight failed for ${healthUrl}: status=${result.status}${codeSuffix} error=${result.error || "unknown"}`
+    )
+  }
+
+  console.log(`Preflight OK: ${healthUrl} (${result.durationMs.toFixed(1)}ms)`)
 }
 
 async function run() {
@@ -142,6 +185,10 @@ async function run() {
   if (options.help) {
     printHelp()
     process.exit(0)
+  }
+
+  if (!options.skipPreflight) {
+    await runPreflight(options.baseUrl, options.healthPath, options.timeoutMs)
   }
 
   const endpointPickers = createEndpointPickers(options.baseUrl)
@@ -180,6 +227,7 @@ async function run() {
           endpoint,
           status: result.status,
           error: result.error ?? "",
+          errorCode: result.errorCode ?? "",
           durationMs: result.durationMs,
         })
       }
@@ -229,7 +277,7 @@ async function run() {
     console.log("\n==== Sample Failures (up to 10) ====")
     failures.slice(0, 10).forEach((failure, index) => {
       console.log(
-        `${index + 1}. status=${failure.status} duration=${failure.durationMs.toFixed(1)}ms endpoint=${failure.endpoint}${failure.error ? ` error=${failure.error}` : ""}`
+        `${index + 1}. status=${failure.status} duration=${failure.durationMs.toFixed(1)}ms endpoint=${failure.endpoint}${failure.errorCode ? ` code=${failure.errorCode}` : ""}${failure.error ? ` error=${failure.error}` : ""}`
       )
     })
   }
