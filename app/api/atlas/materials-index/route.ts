@@ -72,9 +72,29 @@ const getCachedMaterialsIndex = unstable_cache(
   }
 )
 
+let materialsMemCache: { value: MaterialIndexItem[]; expiry: number } | null = null
+let materialsInflight: Promise<MaterialIndexItem[]> | null = null
+
+function getOrFetchMaterials(): Promise<MaterialIndexItem[]> {
+  if (materialsMemCache && Date.now() < materialsMemCache.expiry) {
+    return Promise.resolve(materialsMemCache.value)
+  }
+  if (!materialsInflight) {
+    materialsInflight = getCachedMaterialsIndex()
+      .then(materials => {
+        if (materials.length > 0) {
+          materialsMemCache = { value: materials, expiry: Date.now() + 86_400_000 }
+        }
+        return materials
+      })
+      .finally(() => { materialsInflight = null })
+  }
+  return materialsInflight
+}
+
 export async function GET() {
   try {
-    const materials = await getCachedMaterialsIndex()
+    const materials = await getOrFetchMaterials()
     return NextResponse.json({ materials })
   } catch (error) {
     return NextResponse.json(
