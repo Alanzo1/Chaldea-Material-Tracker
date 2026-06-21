@@ -55,6 +55,7 @@ const SetInventoryModal = dynamic(() => import("@/components/tracker/SetInventor
 })
 
 const NUMBER_FORMATTER = new Intl.NumberFormat("en-US")
+const FARMING_REQUEST_CONCURRENCY = 8
 function formatNumber(value: number) {
   return NUMBER_FORMATTER.format(Number.isFinite(value) ? value : 0)
 }
@@ -75,6 +76,31 @@ function moveBefore(ids: number[], draggedId: number, targetId: number) {
 }
 function formatSkillLevels(levels: [number, number, number]) {
   return `${levels[0]}/${levels[1]}/${levels[2]}`
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  mapper: (item: T, index: number) => Promise<R>
+) {
+  if (!items.length) return [] as R[]
+
+  const safeLimit = Math.max(1, Math.floor(limit))
+  const maxWorkers = Math.min(safeLimit, items.length)
+  const results = new Array<R>(items.length)
+  let nextIndex = 0
+
+  async function worker() {
+    while (true) {
+      const currentIndex = nextIndex
+      nextIndex += 1
+      if (currentIndex >= items.length) return
+      results[currentIndex] = await mapper(items[currentIndex], currentIndex)
+    }
+  }
+
+  await Promise.all(Array.from({ length: maxWorkers }, () => worker()))
+  return results
 }
 
 // ─── Tab bar ─────────────────────────────────────────────────────────────────
@@ -290,8 +316,10 @@ export default function TrackMaterialsPage() {
   useEffect(() => {
     if (activeTab !== "farming" || !incompleteMaterials.length) return
     let cancelled = false
-    Promise.all(
-      incompleteMaterials.map(async (material) => {
+    mapWithConcurrency(
+      incompleteMaterials,
+      FARMING_REQUEST_CONCURRENCY,
+      async (material) => {
         try {
           const r = await fetch(`/api/atlas/material-farming?itemId=${material.id}&limit=1`, { cache: "force-cache" })
           const p = await r.json()
@@ -300,7 +328,7 @@ export default function TrackMaterialsPage() {
         } catch {
           return [material.id, Infinity] as const
         }
-      })
+      }
     ).then((entries) => { if (!cancelled) setEfficiencyByMaterialId(Object.fromEntries(entries)) })
     return () => { cancelled = true }
   }, [activeTab, incompleteMaterials])
