@@ -40,3 +40,8 @@ export function parseOwnedQuantity(value: unknown): number {
 export function holdStepAmount(heldMs: number): number {
   return heldMs >= HOLD_ACCELERATE_AFTER_MS ? 10 : 1
 }
+
+/** A held stepper stops repeating once the owned count hits the bound it is moving toward. */
+export function holdReachedLimit(value: number, direction: 1 | -1): boolean {
+  return direction < 0 ? value <= 0 : value >= MAX_OWNED_QUANTITY
+}

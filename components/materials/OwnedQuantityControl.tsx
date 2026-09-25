@@ -3,7 +3,7 @@
 import { Minus, Plus } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
-import { holdStepAmount, parseOwnedQuantity } from "@/lib/item-usage"
+import { holdReachedLimit, holdStepAmount, parseOwnedQuantity } from "@/lib/item-usage"
 import * as materialTracker from "@/lib/material-tracker"
 import { computeTrackerStateInWorker } from "@/lib/material-tracker-worker-client"
 
@@ -67,9 +67,15 @@ export function OwnedQuantityControl({ itemId }: { itemId: number }) {
   const startHold = (direction: 1 | -1) => {
     stopHold()
     commit(ownedRef.current + direction)
+    if (holdReachedLimit(ownedRef.current, direction)) return
     holdStartedAt.current = Date.now()
     const tick = () => {
       commit(ownedRef.current + direction * holdStepAmount(Date.now() - holdStartedAt.current))
+      // At 0 the − button disables mid-hold and may never get pointerup/leave, so stop here.
+      if (holdReachedLimit(ownedRef.current, direction)) {
+        stopHold()
+        return
+      }
       holdTimer.current = setTimeout(tick, HOLD_INTERVAL_MS)
     }
     holdTimer.current = setTimeout(tick, HOLD_DELAY_MS)
