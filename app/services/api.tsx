@@ -274,25 +274,38 @@ export const getServantsHomePageIndex = unstable_cache(
     }
 )
 
-export const getServantData = async (svt_id: number, region = "NA") => {
-    const response = await fetch(`${BASE_URL}/nice/${region}/svt/${svt_id}`, {
-        cache: "no-store",
-    });
+const getCachedServantData = unstable_cache(
+    async (svt_id: number, region = "NA") => {
+        const response = await fetch(`${BASE_URL}/nice/${region}/svt/${svt_id}`, {
+            next: {
+                revalidate: 3600,
+                tags: [`atlas:servant:${svt_id}`],
+            },
+        });
 
-    if (!response.ok) {
-        throw new Error("Failed to fetch servant.");
+        if (!response.ok) {
+            throw new Error("Failed to fetch servant.");
+        }
+        const servant = await response.json();
+
+        return {
+            id: servant.id,
+            name: servant.name,
+            className: servant.className,
+            rarity: servant.rarity,
+            portrait:
+                servant.extraAssets?.faces?.ascension?.["1"] ??
+                servant.extraAssets?.faces?.ascension?.[1] ??
+                null,
+            raw: servant,
+        };
+    },
+    ["servant-data-by-id"],
+    {
+        revalidate: 3600,
     }
-    const servant = await response.json();
+)
 
-    return {
-        id: servant.id,
-        name: servant.name,
-        className: servant.className,
-        rarity: servant.rarity,
-        portrait:
-            servant.extraAssets?.faces?.ascension?.["1"] ??
-            servant.extraAssets?.faces?.ascension?.[1] ??
-            null,
-        raw: servant,
-    };
+export const getServantData = async (svt_id: number, region = "NA") => {
+    return getCachedServantData(svt_id, region)
 }

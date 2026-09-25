@@ -200,7 +200,12 @@ function shouldHideLevelRow(label: string) {
 
 function shouldHideSkillLevelRow(label: string) {
   const normalized = label.toLowerCase()
-  return shouldHideLevelRow(label) || normalized.includes("overcharge")
+  return (
+    shouldHideLevelRow(label) ||
+    normalized.includes("overcharge") ||
+    normalized.includes("field set") ||
+    normalized.includes("command card type change")
+  )
 }
 
 function isDemeritStateFunction(func: any, label: string) {
