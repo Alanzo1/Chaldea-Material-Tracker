@@ -55,6 +55,8 @@ interface MaterialsSectionProps {
   skillMaterials?: MaterialStageMap
   appendSkillMaterials?: MaterialStageMap
   costumeMaterials?: MaterialStageMap
+  /** Costume id -> display name; costumes without one show "Costume N". */
+  costumeNames?: Record<string, string>
   skillMultiplier?: number
   appendSkillMultiplier?: number
   /** Servant page tab id; material links return to `${pathname}#${returnTab}`. */
@@ -211,8 +213,9 @@ function getAscensionStageLabel(stageKey: string) {
   return `Ascension ${stage + 1}`
 }
 
-function getCostumeStageLabel(stageKey: string) {
-  return `Costume ${stageKey}`
+function getCostumeStageLabeler(costumeMaterials: MaterialStageMap = {}, costumeNames: Record<string, string> = {}) {
+  const order = Object.keys(costumeMaterials).sort(sortStageKeys)
+  return (stageKey: string) => costumeNames[stageKey] ?? `Costume ${order.indexOf(stageKey) + 1}`
 }
 
 function normalizeMaterialDetail(detail?: string) {
@@ -321,6 +324,7 @@ function getMaterialTabs({
   skillMaterials,
   appendSkillMaterials,
   costumeMaterials,
+  costumeNames,
 }: MaterialsSectionProps) {
   return [
     {
@@ -341,7 +345,7 @@ function getMaterialTabs({
     {
       id: "costume",
       label: "Costume",
-      rows: parseMaterialRows(costumeMaterials, getCostumeStageLabel),
+      rows: parseMaterialRows(costumeMaterials, getCostumeStageLabeler(costumeMaterials, costumeNames)),
     },
   ].filter((tab) => tab.rows.length > 0)
 }

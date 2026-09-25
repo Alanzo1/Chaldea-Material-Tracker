@@ -16,7 +16,8 @@ const OUT_DIR = join(process.cwd(), "public", "data")
 async function run() {
   console.log("Fetching exports...")
   const [servants, items, wars] = await Promise.all([
-    fetchJson(EXPORT_URL("nice_servant"), { timeoutMs: 120000 }),
+    // The lore export is nice_servant plus profile data, which holds costume names.
+    fetchJson(EXPORT_URL("nice_servant_lore"), { timeoutMs: 180000 }),
     fetchJson(EXPORT_URL("nice_item"), { timeoutMs: 60000 }),
     fetchJson(EXPORT_URL("nice_war"), { timeoutMs: 120000 }),
   ])

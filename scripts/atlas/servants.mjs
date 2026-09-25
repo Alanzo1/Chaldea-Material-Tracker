@@ -285,6 +285,12 @@ export function trimServantDetail(servant) {
     },
   }
   detail.portrait = faces["1"] ?? faces[1] ?? null
+  // Only costume names from the lore profile (keyed like charaGraph.costume); the rest of the lore is dropped.
+  detail.costumeNames = Object.fromEntries(
+    Object.entries(servant.profile?.costume ?? {})
+      .map(([key, costume]) => [String(costume?.battleCharaId ?? key), String(costume?.name || costume?.shortName || "").trim()])
+      .filter(([, name]) => name)
+  )
 
   return detail
 }

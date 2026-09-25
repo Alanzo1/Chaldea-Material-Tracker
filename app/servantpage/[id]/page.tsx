@@ -42,8 +42,22 @@ function getStarColorClass(rarity: number) {
   return "text-yellow-500"
 }
 
+// Costume id -> label, shared by the art switcher and the Materials costume table
+// so both number unnamed costumes the same way.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getArtOptions(raw: any, portrait: string | null): ArtOption[] {
+function getCostumeLabels(raw: any): Record<string, string> {
+  const names: Record<string, string> = raw?.costumeNames ?? {}
+  const ids = [
+    ...Object.keys(raw?.extraAssets?.charaGraph?.costume ?? {}),
+    ...Object.keys(raw?.costumeMaterials ?? {}),
+  ]
+  return Object.fromEntries(
+    [...new Set(ids)].map((costumeId, index) => [costumeId, names[costumeId] ?? `Costume ${index + 1}`])
+  )
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getArtOptions(raw: any, portrait: string | null, costumeLabels: Record<string, string>): ArtOption[] {
   const faces: Record<string, string> = raw?.extraAssets?.faces?.ascension ?? {}
   const costumeFaces: Record<string, string> = raw?.extraAssets?.faces?.costume ?? {}
   const ascension = Object.entries<string>(raw?.extraAssets?.charaGraph?.ascension ?? {})
@@ -59,7 +73,7 @@ function getArtOptions(raw: any, portrait: string | null): ArtOption[] {
     .filter(([, url]) => Boolean(url))
     .map(([costumeId, url], index) => ({
       id: `costume-${costumeId}`,
-      label: `Costume ${index + 1}`,
+      label: costumeLabels[costumeId],
       url,
       faceUrl: costumeFaces[costumeId],
       // Fallback for costumes Atlas has no face icon for.
@@ -112,11 +126,13 @@ export default async function ServantPage({ params }: ServantPageProps) {
   const noblePhantasms = raw.noblePhantasms ?? []
   const appendPassive = raw.appendPassive ?? []
   const classPassive = raw.classPassive ?? []
+  const costumeLabels = getCostumeLabels(raw)
   const materials = {
     ascensionMaterials: raw.ascensionMaterials ?? {},
     skillMaterials: raw.skillMaterials ?? {},
     appendSkillMaterials: raw.appendSkillMaterials ?? {},
     costumeMaterials: raw.costumeMaterials ?? {},
+    costumeNames: costumeLabels,
     // Summary multiplies per-level costs by the number of skill slots.
     skillMultiplier: Math.max(new Set(skills.map((skill: { num?: number }) => skill.num)).size, 1),
     appendSkillMultiplier: Math.max(appendPassive.length, 1),
@@ -181,7 +197,7 @@ export default async function ServantPage({ params }: ServantPageProps) {
       <aside className="lg:sticky lg:top-22 lg:h-[calc(100vh-7rem)]">
         <ServantArtPanel
           name={servant.name}
-          options={getArtOptions(raw, servant.portrait)}
+          options={getArtOptions(raw, servant.portrait, costumeLabels)}
           actions={
             <ServantActions
               servantId={Number(servant.id)}

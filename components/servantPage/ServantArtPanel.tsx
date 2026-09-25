@@ -30,7 +30,7 @@ export function ServantArtPanel({ name, options, actions }: ServantArtPanelProps
   const active = options.find((option) => option.id === selectedId) ?? options[0]
 
   return (
-    <div className="relative h-[55vh] min-h-80 overflow-hidden rounded-xl border border-border bg-card lg:h-full">
+    <div className="relative h-[55vh] min-h-80 overflow-clip rounded-xl border border-border bg-card lg:h-full">
       {active ? (
         <>
           {/* Blurred copy of the art as the backdrop, like the in-game profile screen. */}
@@ -52,6 +52,12 @@ export function ServantArtPanel({ name, options, actions }: ServantArtPanelProps
             className="object-contain p-4 pt-28 sm:pt-20"
           />
         </>
+      ) : null}
+
+      {active && options.length > 1 ? (
+        <p className="absolute bottom-3 left-3 max-w-[calc(100%-1.5rem)] truncate rounded-full bg-background/70 px-3 py-1.5 text-sm font-medium text-foreground backdrop-blur">
+          {active.label}
+        </p>
       ) : null}
 
       <div className="absolute inset-x-0 top-0 flex flex-wrap items-center gap-2 p-3">
