@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils"
 import { useServants } from "../contexts/HomePageContext"
 
 function Homepage() {
-  const { servants, filters, setFilters, sort, setSort, searchQuery } = useServants()
+  const { servants, filters, setFilters, sort, setSort, searchQuery, setSearchQuery } = useServants()
   const [favoriteIds, setFavoriteIds] = useState<number[]>([])
   const [trackedIds, setTrackedIds] = useState<number[]>([])
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
@@ -61,6 +61,8 @@ function Homepage() {
           setFilters={setFilters}
           sort={sort}
           setSort={setSort}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
         />
       </aside>
 

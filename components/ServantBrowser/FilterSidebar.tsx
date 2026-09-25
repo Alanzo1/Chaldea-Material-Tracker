@@ -1,10 +1,11 @@
 "use client"
 
-import { FilterX, Heart, ListChecks } from "lucide-react"
+import { FilterX, Heart, ListChecks, Search } from "lucide-react"
 import { useMemo } from "react"
 
 import { ChipGroup, type ChipOption } from "@/components/ServantBrowser/ChipGroup"
 import { FilterListSection } from "@/components/ServantBrowser/FilterListSection"
+import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
@@ -49,6 +50,8 @@ interface FilterSidebarProps {
   setFilters: React.Dispatch<React.SetStateAction<ServantFilters>>
   sort: ServantSort
   setSort: (sort: ServantSort) => void
+  searchQuery: string
+  setSearchQuery: (query: string) => void
 }
 
 export function FilterSidebar({
@@ -58,6 +61,8 @@ export function FilterSidebar({
   setFilters,
   sort,
   setSort,
+  searchQuery,
+  setSearchQuery,
 }: FilterSidebarProps) {
   const options = useMemo(() => {
     const classNames = new Map<string, string>()
@@ -104,6 +109,18 @@ export function FilterSidebar({
   return (
     <div className="flex min-h-0 w-full flex-col rounded-xl border border-border bg-card/60">
       <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
+        <label className="relative block">
+          <span className="sr-only">Filter servants by name</span>
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Filter by name..."
+            className="h-10 rounded-full pl-9"
+          />
+        </label>
+
         <label className="flex items-center justify-between gap-3">
           <span className="text-sm font-medium text-muted-foreground">Sort</span>
           <Select value={sort} onValueChange={(value) => setSort(value as ServantSort)}>

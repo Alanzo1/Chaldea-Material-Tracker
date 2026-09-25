@@ -5,7 +5,7 @@ import { createContext, useContext, useState } from "react"
 import type { ServantIndexEntry } from "@/lib/atlas-types"
 import { EMPTY_FILTERS, type ServantFilters, type ServantSort } from "@/lib/servant-filters"
 
-// Browser state shared by the NavBar search and the home page servant browser.
+// Home page servant browser state (filters, sort, name search).
 // Lives in the root layout, so it survives navigation between pages.
 interface ServantContextValue {
   servants: ServantIndexEntry[]
