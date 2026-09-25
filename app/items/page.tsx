@@ -1,7 +1,6 @@
 import Image from "next/image"
 import Link from "next/link"
 
-import { HeaderActionLink } from "@/components/HeaderActionLink"
 import { getMaterialsIndex } from "@/lib/atlas-data"
 
 export default function ItemsPage() {
@@ -15,10 +14,6 @@ export default function ItemsPage() {
             Chaldea inventory
           </p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">Items</h1>
-        </div>
-        <div className="flex gap-2">
-          <HeaderActionLink href="/" label="Servants" />
-          <HeaderActionLink href="/track-materials" label="Planning" />
         </div>
       </header>
 

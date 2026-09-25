@@ -1,14 +1,11 @@
 import Link from "next/link"
-import { Heart, Home, ListChecks } from "lucide-react"
 
 import { getServantDetail, getServantsIndex } from "@/lib/atlas-data"
-import { HeaderActionLink } from "@/components/HeaderActionLink"
 import { ServantArtCard } from "@/components/servantPage/ServantArtCard"
 import { ServantHeaderCard } from "@/components/servantPage/ServantHeaderCard"
 import { ServantMetaCard } from "@/components/servantPage/ServantMetaCard"
 import { SkillsSection } from "@/components/servantPage/SkillsSection"
 import { ServantStatsCard } from "@/components/servantPage/ServantStatsCard"
-import { PageHeader } from "@/components/PageHeader"
 import { Button } from "@/components/ui/button"
 
 const CARD_LABELS: Record<string, string> = {
@@ -98,17 +95,6 @@ export default async function ServantPage({ params }: ServantPageProps) {
 
   return (
     <main className="pb-10">
-      <PageHeader
-        title={servant.name}
-        subtitle={`${toTitleCase(servant.className)} · ${"★".repeat(Number(servant.rarity ?? 0))}`}
-        actions={
-          <>
-            <HeaderActionLink href="/" icon={<Home className="size-3.5" />} label="Homepage" />
-            <HeaderActionLink href="/favorites" icon={<Heart className="size-3.5" />} label="Favorites" />
-            <HeaderActionLink href="/track-materials" icon={<ListChecks className="size-3.5" />} label="Tracker" />
-          </>
-        }
-      />
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 pt-6">
         <div>
           <Button asChild variant="outline">

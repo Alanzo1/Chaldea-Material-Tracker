@@ -2,7 +2,6 @@ import { ArrowLeft } from "lucide-react"
 
 import { HeaderActionLink } from "@/components/HeaderActionLink"
 import MaterialFarmingCard from "@/components/materials/MaterialFarmingCard"
-import { PageHeader } from "@/components/PageHeader"
 
 interface MaterialPageProps {
   params: Promise<{
@@ -41,14 +40,10 @@ export default async function MaterialPage({
 
   return (
     <main className="pb-10">
-      <PageHeader
-        title={itemName}
-        subtitle={itemDescription || "Material details and farming locations"}
-        actions={
-          <HeaderActionLink href={backHref} icon={<ArrowLeft className="size-3.5" />} label="Back" />
-        }
-      />
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 pt-6">
+        <div>
+          <HeaderActionLink href={backHref} icon={<ArrowLeft className="size-3.5" />} label="Back" className="w-fit" />
+        </div>
         <MaterialFarmingCard
           itemId={Number.isFinite(parsedItemId) ? parsedItemId : 0}
           itemName={itemName}
