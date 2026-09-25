@@ -1,6 +1,6 @@
 "use client"
 
-import { FilterX, Heart, ListChecks, Search } from "lucide-react"
+import { FilterX, ListChecks, Search } from "lucide-react"
 import { useMemo } from "react"
 
 import { ChipGroup, type ChipOption } from "@/components/ServantBrowser/ChipGroup"
@@ -31,7 +31,6 @@ const SORT_LABELS: Record<ServantSort, string> = {
 }
 
 const COLLECTION_OPTIONS: ChipOption<CollectionFilter>[] = [
-  { value: "favorites", label: <><Heart className="size-4" aria-hidden="true" />Favorites</> },
   { value: "tracked", label: <><ListChecks className="size-4" aria-hidden="true" />Tracked</> },
 ]
 

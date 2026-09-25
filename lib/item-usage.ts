@@ -1,18 +1,18 @@
 // Pure helpers for the material page. No `@/` imports: loaded directly by `node --test`.
 import type { ItemUsageEntry } from "./atlas-types"
 
-export type UsageFilter = "all" | "tracked" | "favorites"
+export type UsageFilter = "all" | "tracked"
 
 export const MAX_OWNED_QUANTITY = 9_999_999
 
 export function filterUsage(
   usage: ItemUsageEntry[],
   filter: UsageFilter,
-  ctx: { trackedIds: number[]; favoriteIds: number[]; knownServantIds: Iterable<number> }
+  ctx: { trackedIds: number[]; knownServantIds: Iterable<number> }
 ): ItemUsageEntry[] {
   const known = new Set(ctx.knownServantIds)
   const picked =
-    filter === "tracked" ? new Set(ctx.trackedIds) : filter === "favorites" ? new Set(ctx.favoriteIds) : null
+    filter === "tracked" ? new Set(ctx.trackedIds) : null
 
   return usage.filter((entry) => known.has(entry.servantId) && (!picked || picked.has(entry.servantId)))
 }

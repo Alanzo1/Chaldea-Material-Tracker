@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { ChevronDown } from "lucide-react"
 import { useState } from "react"
 
@@ -15,11 +16,14 @@ export function FilterListSection({
   options,
   selected,
   onChange,
+  icons,
 }: {
   title: string
   options: string[]
   selected: string[]
   onChange: (value: string, checked: boolean) => void
+  /** Optional option → image URL, shown before the label (e.g. drop item icons). */
+  icons?: Record<string, string | null>
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
@@ -69,6 +73,9 @@ export function FilterListSection({
                     onCheckedChange={(checked) => onChange(option, checked === true)}
                     className="size-3.5 rounded-sm"
                   />
+                  {icons?.[option] ? (
+                    <Image src={icons[option]!} alt="" width={28} height={28} className="size-7 shrink-0 object-contain" />
+                  ) : null}
                   <span className="text-xs leading-none text-foreground/80 transition-colors group-hover:text-foreground">
                     {option}
                   </span>

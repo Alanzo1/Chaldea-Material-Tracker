@@ -55,6 +55,12 @@ export function validateDataset(dataset, previous) {
   const missingItems = dataset.materialsIndex.filter((m) => !dataset.items[String(m.id)]).map((m) => m.id)
   if (missingItems.length) errors.push(`missing item file for materials: ${missingItems.join(", ")}`)
 
+  if (!dataset.freeQuests?.index.length) errors.push("missing free quest index")
+  for (const quest of dataset.freeQuests?.index ?? []) {
+    const key = `${quest.questId}/${quest.phase}`
+    if (!dataset.freeQuests.phases[key]) errors.push(`missing free quest phase: ${key}`)
+  }
+
   return errors
 }
 
@@ -67,9 +73,18 @@ export async function writeDataset(outDir, dataset) {
   await rm(tmpDir, { recursive: true, force: true })
   await mkdir(join(tmpDir, "servants"), { recursive: true })
   await mkdir(join(tmpDir, "items"), { recursive: true })
+  await mkdir(join(tmpDir, "quests"), { recursive: true })
 
   await writeJson(join(tmpDir, "servants-index.json"), dataset.servantsIndex)
   await writeJson(join(tmpDir, "materials-index.json"), dataset.materialsIndex)
+  await writeJson(join(tmpDir, "quests-index.json"), dataset.freeQuests.index)
+  for (const quest of dataset.freeQuests.index) {
+    await mkdir(join(tmpDir, "quests", String(quest.questId)), { recursive: true })
+    await writeJson(
+      join(tmpDir, "quests", String(quest.questId), `${quest.phase}.json`),
+      dataset.freeQuests.phases[`${quest.questId}/${quest.phase}`]
+    )
+  }
   for (const [id, detail] of dataset.servantDetails) {
     await writeJson(join(tmpDir, "servants", `${id}.json`), detail)
   }

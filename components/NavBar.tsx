@@ -14,7 +14,7 @@ type ThemeMode = "light" | "dark"
 const navItems = [
   { href: "/servants", label: "Servants" },
   { href: "/items", label: "Items" },
-  { href: "/favorites", label: "Favorites" },
+  { href: "/free-quests", label: "Free Quests" },
   { href: "/track-materials", label: "Planning" },
 ]
 

@@ -52,3 +52,62 @@ export interface ItemFile {
   nodes: FarmingNode[]
   usage: ItemUsageEntry[]
 }
+
+/** One entry per free quest phase in public/data/quests-index.json. */
+export interface FreeQuestIndexEntry {
+  entryItems: { id: number; name: string; amount: number }[]
+  repeatable: boolean
+  banner: string | null
+  questId: number
+  phase: number
+  name: string
+  warId: number
+  warName: string
+  spotId: number
+  spotName: string
+  /** Location's quest-map icon; null for region-wide spots (e.g. Ordeal Call areas). */
+  spotImage: string | null
+  apCost: number | null
+  status: "available" | "unavailable"
+  enemyDataAvailable: boolean
+  /** Filter summary across all waves (see summarizeQuestPhase in scripts/atlas/quests.mjs). */
+  enemyClasses: string[]
+  enemyAttributes: string[]
+  /** Trait names, excluding the classXxx and attributeXxx traits. */
+  enemyTraits: string[]
+  drops: { id: number; name: string; icon: string | null }[]
+}
+
+/** public/data/quests/{questId}/{phase}.json; null stats mean unknown. */
+export interface FreeQuestPhase extends FreeQuestIndexEntry {
+  drops: {
+    id: number
+    type: string
+    name: string
+    icon: string | null
+    runs: number
+    perRun: number | null
+    apPerItem: number | null
+  }[]
+  recommendedLevel: string | null
+  bond: number | null
+  experience: number | null
+  qp: number | null
+  enemyHash: string | null
+  stages: {
+    wave: number
+    enemies: {
+      id: number | null
+      name: string
+      className: string | null
+      attribute: string | null
+      icon: string | null
+      level: number | null
+      hp: number | null
+      attack: number | null
+      deck: string | null
+      deckId: number | null
+      traits: { id: number; name?: string }[]
+    }[]
+  }[]
+}

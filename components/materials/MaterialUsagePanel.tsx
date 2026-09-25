@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Heart, ListChecks } from "lucide-react"
+import { ListChecks } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { useServants } from "@/app/contexts/HomePageContext"
@@ -14,13 +14,11 @@ import { cn } from "@/lib/utils"
 const FILTERS: { id: UsageFilter; label: string; icon?: React.ReactNode }[] = [
   { id: "all", label: "All" },
   { id: "tracked", label: "Tracked", icon: <ListChecks className="size-4" aria-hidden="true" /> },
-  { id: "favorites", label: "Favorites", icon: <Heart className="size-4" aria-hidden="true" /> },
 ]
 
 const EMPTY_MESSAGE: Record<UsageFilter, string> = {
   all: "Not used for servant upgrades",
   tracked: "None of your tracked servants use this",
-  favorites: "None of your favorite servants use this",
 }
 
 interface MaterialUsagePanelProps {
@@ -31,7 +29,7 @@ interface MaterialUsagePanelProps {
 
 export function MaterialUsagePanel({ usage, status, onRetry }: MaterialUsagePanelProps) {
   const { servants } = useServants()
-  const { favoriteIds, trackedIds } = useCollectionIds()
+  const { trackedIds } = useCollectionIds()
   const [filter, setFilter] = useState<UsageFilter>("all")
 
   const servantById = useMemo(() => new Map(servants.map((servant) => [servant.id, servant])), [servants])
@@ -39,7 +37,7 @@ export function MaterialUsagePanel({ usage, status, onRetry }: MaterialUsagePane
   const byFilter = Object.fromEntries(
     FILTERS.map(({ id }) => [
       id,
-      filterUsage(usage, id, { trackedIds, favoriteIds, knownServantIds: servantById.keys() }),
+      filterUsage(usage, id, { trackedIds, knownServantIds: servantById.keys() }),
     ])
   ) as Record<UsageFilter, ItemUsageEntry[]>
   const visible = byFilter[filter]
