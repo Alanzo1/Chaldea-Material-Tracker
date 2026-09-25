@@ -6,10 +6,9 @@ import Image from "next/image"
 import type { ReactNode } from "react"
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Boxes, Heart, Home, Pickaxe, Users } from "lucide-react"
+import { Boxes, Pickaxe, Users } from "lucide-react"
 
-import { HEADER_ACTION_BUTTON_CLASS, HeaderActionLink } from "@/components/HeaderActionLink"
-import { PageHeader } from "@/components/PageHeader"
+import { HEADER_ACTION_BUTTON_CLASS } from "@/components/HeaderActionLink"
 import * as materialTracker from "@/lib/material-tracker"
 import type { RequirementTotals, TrackedMaterialsState } from "@/lib/material-tracker"
 import { computeTrackerStateInWorker } from "@/lib/material-tracker-worker-client"
@@ -384,19 +383,7 @@ export default function TrackMaterialsPage() {
     <main className="min-h-screen bg-background pb-16" suppressHydrationWarning>
       <div className="pointer-events-none fixed inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
 
-      <div className="sticky top-0 z-40 isolate">
-        <PageHeader
-          sticky={false}
-          title="Material Tracker"
-          subtitle={`${trackerState.servants.length} servant${trackerState.servants.length === 1 ? "" : "s"} tracked`}
-          actions={
-            <>
-              <HeaderActionLink href="/" icon={<Home className="size-3.5" />} label="Home" />
-              <HeaderActionLink href="/favorites" icon={<Heart className="size-3.5" />} label="Favorites" />
-            </>
-          }
-        />
-
+      <div className="sticky top-16 z-10 isolate">
         <div className="border-b border-border bg-background shadow-sm">
           <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-4 px-5 py-3 md:px-8">
             <TabBar
