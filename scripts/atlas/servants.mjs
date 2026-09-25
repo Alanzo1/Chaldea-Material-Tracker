@@ -275,9 +275,10 @@ export function trimServantDetail(servant) {
   }
 
   const faces = servant.extraAssets?.faces?.ascension ?? {}
+  const costumeFaces = servant.extraAssets?.faces?.costume ?? {}
   const charaGraph = servant.extraAssets?.charaGraph ?? {}
   detail.extraAssets = {
-    faces: { ascension: faces },
+    faces: { ascension: faces, costume: costumeFaces },
     charaGraph: {
       ascension: charaGraph.ascension ?? {},
       costume: charaGraph.costume ?? {},

@@ -24,7 +24,7 @@ function servant(overrides = {}) {
     hpMax: 15150,
     atkMax: 11221,
     extraAssets: {
-      faces: { ascension: { "1": FACE } },
+      faces: { ascension: { "1": FACE }, costume: { "100130": "f_1001300.png" } },
       charaGraph: { ascension: { "1": "a1.png" }, costume: { "100130": "c.png" } },
       commands: { ascension: { "1": "cmd.png" } },
     },
@@ -98,6 +98,7 @@ test("trimServantDetail keeps page fields and drops the rest", () => {
   assert.equal(detail.lvMax, undefined)
   assert.equal(detail.extraAssets.commands, undefined)
   assert.deepEqual(detail.extraAssets.charaGraph.costume, { "100130": "c.png" })
+  assert.deepEqual(detail.extraAssets.faces.costume, { "100130": "f_1001300.png" })
   assert.equal(detail.skills[0].name, "Charisma B")
   assert.deepEqual(detail.ascensionMaterials, { "0": { items: [], qp: 100000 } })
 })
