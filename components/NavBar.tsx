@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils"
 type ThemeMode = "light" | "dark"
 
 const navItems = [
-  { href: "/", label: "Servants" },
+  { href: "/servants", label: "Servants" },
   { href: "/items", label: "Items" },
   { href: "/favorites", label: "Favorites" },
   { href: "/track-materials", label: "Planning" },
