@@ -1,14 +1,14 @@
 "use client"
 
-import { Minus, Plus } from "lucide-react"
+import { Check } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
-import { holdReachedLimit, holdStepAmount, parseOwnedQuantity } from "@/lib/item-usage"
+import { normalizeOwnedDraft, parseOwnedQuantity } from "@/lib/item-usage"
 import * as materialTracker from "@/lib/material-tracker"
 import { computeTrackerStateInWorker } from "@/lib/material-tracker-worker-client"
+import { cn } from "@/lib/utils"
 
-const HOLD_DELAY_MS = 400
-const HOLD_INTERVAL_MS = 90
+const SAVED_FLASH_MS = 1500
 const NUMBER = new Intl.NumberFormat("en-US")
 
 function Stat({ label, value, tone }: { label: string; value: number; tone?: string }) {
@@ -21,18 +21,20 @@ function Stat({ label, value, tone }: { label: string; value: number; tone?: str
 }
 
 // Owned count for one material, shared with the Planning page (tracker ownedByMaterialId).
+// The user types a quantity and presses Save (or Enter); nothing is stored before that.
 export function OwnedQuantityControl({ itemId }: { itemId: number }) {
-  const [owned, setOwned] = useState(0)
+  const [saved, setSaved] = useState(0)
+  const [draft, setDraft] = useState("0")
   const [needed, setNeeded] = useState(0)
-  const ownedRef = useRef(0)
-  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const holdStartedAt = useRef(0)
+  const [justSaved, setJustSaved] = useState(false)
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const keepSelectionOnMouseUp = useRef(false)
 
   useEffect(() => {
     const trackerState = materialTracker.readTrackedMaterialsState()
     const initial = parseOwnedQuantity(trackerState.ownedByMaterialId[String(itemId)] ?? 0)
-    ownedRef.current = initial
-    setOwned(initial)
+    setSaved(initial)
+    setDraft(String(initial))
 
     let cancelled = false
     computeTrackerStateInWorker(trackerState)
@@ -48,88 +50,82 @@ export function OwnedQuantityControl({ itemId }: { itemId: number }) {
 
     return () => {
       cancelled = true
+      if (flashTimer.current) clearTimeout(flashTimer.current)
     }
   }, [itemId])
 
-  const commit = (value: unknown) => {
-    const safe = parseOwnedQuantity(value)
-    ownedRef.current = safe
-    setOwned(safe)
-    materialTracker.setOwnedMaterialQuantity(itemId, safe)
+  const draftValue = parseOwnedQuantity(draft)
+  const dirty = draftValue !== saved
+  const afterPlannedUpgrades = saved - needed
+
+  const save = () => {
+    materialTracker.setOwnedMaterialQuantity(itemId, draftValue)
+    setSaved(draftValue)
+    setDraft(String(draftValue))
+    setJustSaved(true)
+    if (flashTimer.current) clearTimeout(flashTimer.current)
+    flashTimer.current = setTimeout(() => setJustSaved(false), SAVED_FLASH_MS)
   }
-
-  const stopHold = () => {
-    if (holdTimer.current) clearTimeout(holdTimer.current)
-    holdTimer.current = null
-  }
-
-  // Press: step once now; keep holding: repeat, stepping by 10 after 1 s.
-  const startHold = (direction: 1 | -1) => {
-    stopHold()
-    commit(ownedRef.current + direction)
-    if (holdReachedLimit(ownedRef.current, direction)) return
-    holdStartedAt.current = Date.now()
-    const tick = () => {
-      commit(ownedRef.current + direction * holdStepAmount(Date.now() - holdStartedAt.current))
-      // At 0 the − button disables mid-hold and may never get pointerup/leave, so stop here.
-      if (holdReachedLimit(ownedRef.current, direction)) {
-        stopHold()
-        return
-      }
-      holdTimer.current = setTimeout(tick, HOLD_INTERVAL_MS)
-    }
-    holdTimer.current = setTimeout(tick, HOLD_DELAY_MS)
-  }
-
-  // Review Focus 2: never leave a repeating timer behind.
-  useEffect(() => stopHold, [])
-
-  const stepButton = (direction: 1 | -1) => (
-    <button
-      type="button"
-      aria-label={direction > 0 ? "Increase owned" : "Decrease owned"}
-      disabled={direction < 0 && owned === 0}
-      onPointerDown={(event) => {
-        event.preventDefault()
-        startHold(direction)
-      }}
-      onPointerUp={stopHold}
-      onPointerLeave={stopHold}
-      onPointerCancel={stopHold}
-      // Keyboard activation (Enter/Space) fires click with detail 0 and no pointer events.
-      onClick={(event) => {
-        if (event.detail === 0) commit(ownedRef.current + direction)
-      }}
-      className="grid size-10 shrink-0 select-none place-items-center rounded-full bg-muted text-foreground transition-colors hover:bg-muted/70 disabled:opacity-40"
-    >
-      {direction > 0 ? <Plus className="size-4" aria-hidden="true" /> : <Minus className="size-4" aria-hidden="true" />}
-    </button>
-  )
-
-  const remaining = Math.max(0, needed - owned)
 
   return (
     <section className="grid gap-4 rounded-lg bg-card/60 p-4 sm:grid-cols-[auto_1fr_1fr] sm:items-center">
-      <div>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (dirty) save()
+        }}
+      >
         <label htmlFor={`owned-${itemId}`} className="text-xs text-muted-foreground">
-          Owned
+          Quantity owned
         </label>
         <div className="mt-1 flex items-center gap-2">
-          {stepButton(-1)}
           <input
             id={`owned-${itemId}`}
-            type="number"
+            type="text"
             inputMode="numeric"
-            min={0}
-            value={owned}
-            onChange={(event) => commit(event.target.value)}
-            className="h-10 w-28 rounded-md border border-border bg-background px-3 text-center text-base font-semibold tabular-nums"
+            autoComplete="off"
+            value={draft}
+            onChange={(event) => {
+              setDraft(normalizeOwnedDraft(event.target.value))
+              setJustSaved(false)
+            }}
+            // Select all on focus so typing replaces the number; the mouseup that follows a
+            // click-to-focus would otherwise collapse the selection.
+            onFocus={(event) => {
+              event.target.select()
+              keepSelectionOnMouseUp.current = true
+            }}
+            onMouseUp={(event) => {
+              if (keepSelectionOnMouseUp.current) event.preventDefault()
+              keepSelectionOnMouseUp.current = false
+            }}
+            className="h-10 w-32 rounded-md border border-border bg-background px-3 text-center text-base font-semibold tabular-nums"
           />
-          {stepButton(1)}
+          <button
+            type="submit"
+            disabled={!dirty}
+            className={cn(
+              "flex h-10 items-center gap-1.5 rounded-md px-4 text-sm font-semibold transition-colors",
+              dirty ? "bg-foreground text-background hover:bg-foreground/90" : "bg-muted text-muted-foreground",
+              justSaved && "text-emerald-300"
+            )}
+          >
+            {justSaved ? <Check className="size-4" aria-hidden="true" /> : null}
+            {justSaved ? "Saved" : "Save"}
+          </button>
         </div>
-      </div>
+        <p className="mt-1 h-4 text-xs text-amber-300" aria-live="polite">
+          {dirty ? `Not saved yet — saved amount: ${NUMBER.format(saved)}` : ""}
+        </p>
+      </form>
       <Stat label="Needed by tracked servants" value={needed} />
-      <Stat label="Remaining" value={remaining} tone={remaining > 0 ? "text-rose-300" : "text-emerald-300"} />
+      <div aria-live="polite">
+        <Stat
+          label="Left over after tracked servants"
+          value={afterPlannedUpgrades}
+          tone={afterPlannedUpgrades < 0 ? "text-rose-300" : "text-emerald-300"}
+        />
+      </div>
     </section>
   )
 }

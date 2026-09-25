@@ -3,15 +3,15 @@
 import Image from "next/image"
 import Link from "next/link"
 import { Search } from "lucide-react"
-import { useState } from "react"
 
+import { useItemSearch } from "@/app/contexts/ItemSearchContext"
 import { itemBackgroundClass } from "@/components/materials/itemBackground"
 import { Input } from "@/components/ui/input"
 import type { MaterialIndexEntry } from "@/lib/atlas-types"
 import { cn } from "@/lib/utils"
 
 export function ItemGrid({ items, selectedId }: { items: MaterialIndexEntry[]; selectedId?: number }) {
-  const [query, setQuery] = useState("")
+  const { query, setQuery } = useItemSearch()
   const search = query.trim().toLowerCase()
   const visible = search ? items.filter((item) => item.name.toLowerCase().includes(search)) : items
 

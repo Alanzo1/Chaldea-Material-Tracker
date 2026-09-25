@@ -4,7 +4,6 @@ import type { ItemUsageEntry } from "./atlas-types"
 export type UsageFilter = "all" | "tracked" | "favorites"
 
 export const MAX_OWNED_QUANTITY = 9_999_999
-const HOLD_ACCELERATE_AFTER_MS = 1000
 
 export function filterUsage(
   usage: ItemUsageEntry[],
@@ -37,11 +36,12 @@ export function parseOwnedQuantity(value: unknown): number {
   return Math.min(MAX_OWNED_QUANTITY, Math.max(0, Math.floor(parsed)))
 }
 
-export function holdStepAmount(heldMs: number): number {
-  return heldMs >= HOLD_ACCELERATE_AFTER_MS ? 10 : 1
-}
-
-/** A held stepper stops repeating once the owned count hits the bound it is moving toward. */
-export function holdReachedLimit(value: number, direction: 1 | -1): boolean {
-  return direction < 0 ? value <= 0 : value >= MAX_OWNED_QUANTITY
+/**
+ * Text shown in the owned field while editing: digits only, no leading zeros, capped.
+ * Empty stays empty so the field can be cleared before typing a new value.
+ */
+export function normalizeOwnedDraft(input: string): string {
+  const digits = input.replace(/\D/g, "")
+  if (!digits) return ""
+  return String(Math.min(MAX_OWNED_QUANTITY, Number(digits.replace(/^0+(?=\d)/, ""))))
 }
