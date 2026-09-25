@@ -37,28 +37,51 @@ export function ServantProvider({
 }) {
   const [servants, setServants] = useState<any[]>(initialServants)
   const [filters, setFilters] = useState<ServantFilters>(defaultFilters)
+  const [searchQuery, setSearchQuery] = useState("")
 
   const filtered = useMemo(
     () =>
       servants.filter((servant) => {
-      const classMatch =
-        !filters.classes.length ||
-        filters.classes.includes(String(servant.className).toLowerCase())
+        const query = searchQuery.trim().toLowerCase()
+        const searchMatch =
+          !query ||
+          String(servant.name ?? "").toLowerCase().includes(query) ||
+          String(servant.className ?? "").toLowerCase().includes(query)
 
-      const buffMatch = matchesAny(servant.buffs, filters.buffs)
-      const debuffMatch = matchesAny(servant.debuffs, filters.debuffs)
-      const traitMatch = matchesAny(servant.traits, filters.traits)
-      const alignmentMatch = matchesAny(servant.alignments, filters.alignments)
-      const starMatch = matchesAny([servant.stars], filters.stars)
+        const classMatch =
+          !filters.classes.length ||
+          filters.classes.includes(String(servant.className).toLowerCase())
 
-      return classMatch && buffMatch && debuffMatch && traitMatch && alignmentMatch && starMatch
+        const buffMatch = matchesAny(servant.buffs, filters.buffs)
+        const debuffMatch = matchesAny(servant.debuffs, filters.debuffs)
+        const traitMatch = matchesAny(servant.traits, filters.traits)
+        const alignmentMatch = matchesAny(servant.alignments, filters.alignments)
+        const starMatch = matchesAny([servant.stars], filters.stars)
+
+        return (
+          searchMatch &&
+          classMatch &&
+          buffMatch &&
+          debuffMatch &&
+          traitMatch &&
+          alignmentMatch &&
+          starMatch
+        )
       }),
-    [filters, servants]
+    [filters, searchQuery, servants]
   )
 
   return (
     <ServantContext.Provider
-      value={{ servants, setServants, filtered, filters, setFilters }}
+      value={{
+        servants,
+        setServants,
+        filtered,
+        filters,
+        setFilters,
+        searchQuery,
+        setSearchQuery,
+      }}
     >
       {children}
     </ServantContext.Provider>
