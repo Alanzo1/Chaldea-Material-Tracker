@@ -1,10 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Heart, PlusCircle } from "lucide-react"
+import { PlusCircle } from "lucide-react"
 
-import { isServantFavorited, toggleFavoriteServant } from "@/lib/favorites"
 import {
   MaterialStageMap,
   type SkillLevels,
@@ -16,7 +15,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
 
 interface ServantActionsProps {
   servantId: number
@@ -66,7 +64,7 @@ function LevelSelect({
 
 const asOptions = (levels: number[]) => levels.map((level) => ({ value: level, label: String(level) }))
 
-// "Add" (send to material tracker) and favorite controls, overlaid on the servant art.
+// Add to the material tracker from the servant art.
 export function ServantActions({
   servantId,
   name,
@@ -78,19 +76,9 @@ export function ServantActions({
   appendSkillMaterials,
 }: ServantActionsProps) {
   const router = useRouter()
-  const [isFavorite, setIsFavorite] = useState(false)
   const [ascensionLevel, setAscensionLevel] = useState(1)
   const [skillLevels, setSkillLevels] = useState<SkillLevels>([1, 1, 1])
   const [appendSkillLevels, setAppendSkillLevels] = useState<SkillLevels>([1, 1, 1])
-
-  useEffect(() => {
-    setIsFavorite(isServantFavorited(servantId))
-  }, [servantId])
-
-  const onToggleFavorite = () => {
-    const nextIds = toggleFavoriteServant(servantId)
-    setIsFavorite(nextIds.includes(servantId))
-  }
 
   const onSendToTracker = () => {
     upsertTrackedServant({
@@ -158,15 +146,6 @@ export function ServantActions({
         </PopoverContent>
       </Popover>
 
-      <button
-        type="button"
-        onClick={onToggleFavorite}
-        aria-pressed={isFavorite}
-        aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
-        className={cn(OVERLAY_BUTTON_CLASS, "w-10 justify-center px-0")}
-      >
-        <Heart className={cn("size-4", isFavorite && "fill-rose-500 text-rose-500")} aria-hidden="true" />
-      </button>
     </div>
   )
 }

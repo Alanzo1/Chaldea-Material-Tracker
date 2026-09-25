@@ -12,16 +12,16 @@ import { useServants } from "../contexts/HomePageContext"
 
 function Homepage() {
   const { servants, filters, setFilters, sort, setSort, searchQuery, setSearchQuery } = useServants()
-  const { favoriteIds, trackedIds } = useCollectionIds()
+  const { trackedIds } = useCollectionIds()
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
   const visibleServants = useMemo(
     () =>
       sortServants(
-        filterServants(servants, filters, { query: searchQuery, favoriteIds, trackedIds }),
+        filterServants(servants, filters, { query: searchQuery, trackedIds }),
         sort
       ),
-    [servants, filters, searchQuery, favoriteIds, trackedIds, sort]
+    [servants, filters, searchQuery, trackedIds, sort]
   )
   const activeCount = countActiveFilters(filters)
 

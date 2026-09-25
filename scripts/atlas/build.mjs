@@ -6,6 +6,7 @@ import { fetchJson, mapWithRetryPass } from "./fetch.mjs"
 import { buildMaterialsIndex } from "./materials.mjs"
 import { buildServantsIndex, trimServantDetail } from "./servants.mjs"
 import { buildItemFiles, buildItemUsage } from "./usage.mjs"
+import { buildFreeQuestData, selectFreeQuestJobs } from "./quests.mjs"
 
 const REGION = "NA"
 const BASE_URL = "https://api.atlasacademy.io"
@@ -23,7 +24,10 @@ async function run() {
     fetchJson(EXPORT_URL("nice_war"), { timeoutMs: 120000 }),
   ])
 
-  const jobs = selectQuestPhaseJobs(wars)
+  const freeQuestJobs = selectFreeQuestJobs(wars)
+  const jobs = [...new Map([...freeQuestJobs, ...selectQuestPhaseJobs(wars)].map((job) => [
+    `${job.questId}/${job.phase}`, job,
+  ])).values()].sort((a, b) => a.questId - b.questId || a.phase - b.phase)
   console.log(`Fetching ${jobs.length} quest phases (concurrency ${QUEST_CONCURRENCY})...`)
   let completed = 0
   const { results: questResults, failed: failedIndexes } = await mapWithRetryPass(jobs, QUEST_CONCURRENCY, async (job) => {
@@ -41,6 +45,18 @@ async function run() {
     console.error(`  failed after retry: quest ${questId} phase ${phase}`)
   }
   const failed = failedIndexes.length
+  if (failed) throw new Error(`${failed} quest phase fetches failed after retries; existing data kept`)
+
+  const dropServantIds = [...new Set(questResults.flatMap(({ detail }) =>
+    (detail?.drops ?? []).filter((drop) => drop.type === "servant").map((drop) => drop.objectId)
+  ))].sort((a, b) => a - b)
+  const dropServants = await mapWithRetryPass(dropServantIds, QUEST_CONCURRENCY, (id) =>
+    fetchJson(`${BASE_URL}/basic/${REGION}/servant/${id}`)
+  )
+  if (dropServants.failed.length) throw new Error("Drop servant metadata fetch failed; existing data kept")
+  const dropItems = [...items, ...dropServants.results.map((svt) => ({
+    id: svt.id, name: `${svt.name} (${svt.className})`, icon: svt.face,
+  }))]
 
   const servantsIndex = buildServantsIndex(servants)
   const indexedIds = new Set(servantsIndex.map((s) => s.id))
@@ -63,6 +79,7 @@ async function run() {
     servantDetails,
     materialsIndex,
     items: itemFiles,
+    freeQuests: buildFreeQuestData(freeQuestJobs, questResults, dropItems),
     questFetch: { total: jobs.length, failed },
   }
 

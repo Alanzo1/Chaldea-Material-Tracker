@@ -13,7 +13,7 @@ export interface FilterableServant {
   alignments?: string[]
 }
 
-export type CollectionFilter = "favorites" | "tracked"
+export type CollectionFilter = "tracked"
 export type ServantSort = "default" | "name" | "rarity" | "class"
 
 export interface ServantFilters {
@@ -41,7 +41,6 @@ export const EMPTY_FILTERS: ServantFilters = {
 
 export interface FilterContext {
   query: string
-  favoriteIds: number[]
   trackedIds: number[]
 }
 
@@ -77,10 +76,9 @@ function matchesAny(values: string[] = [], selected: string[]) {
 export function filterServants<T extends FilterableServant>(
   servants: T[],
   filters: ServantFilters,
-  { query, favoriteIds, trackedIds }: FilterContext
+  { query, trackedIds }: FilterContext
 ): T[] {
   const search = query.trim().toLowerCase()
-  const favorites = new Set(favoriteIds)
   const tracked = new Set(trackedIds)
 
   return servants.filter((servant) => {
@@ -90,9 +88,7 @@ export function filterServants<T extends FilterableServant>(
 
     if (
       filters.collection.length &&
-      !filters.collection.some((entry) =>
-        entry === "favorites" ? favorites.has(servant.id) : tracked.has(servant.id)
-      )
+      !tracked.has(servant.id)
     ) {
       return false
     }

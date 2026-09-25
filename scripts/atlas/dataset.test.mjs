@@ -23,6 +23,10 @@ function dataset({ servants = 400, materials = 200, farmItems = 100, usedItems =
       ])
     ),
     questFetch: { total: 1000, failed },
+    freeQuests: {
+      index: [{ questId: 100, phase: 1 }],
+      phases: { "100/1": { questId: 100, phase: 1, stages: [] } },
+    },
   }
 }
 
@@ -82,6 +86,18 @@ test("writeDataset replaces the directory and removes stale files", async () => 
     usedItemCount: 1,
   })
   assert.equal(await readPreviousStats(join(root, "missing")), null)
+  assert.deepEqual(JSON.parse(await readFile(join(outDir, "quests", "100", "1.json"), "utf8")), {
+    questId: 100, phase: 1, stages: [],
+  })
+  assert.deepEqual(JSON.parse(await readFile(join(outDir, "quests-index.json"), "utf8")), [{ questId: 100, phase: 1 }])
+})
+
+test("validateDataset rejects missing free quest data", () => {
+  const data = dataset()
+  delete data.freeQuests.phases["100/1"]
+  assert.match(validateDataset(data, null).join("\n"), /missing free quest phase: 100\/1/)
+  data.freeQuests.index = []
+  assert.match(validateDataset(data, null).join("\n"), /missing free quest index/)
 })
 
 test("validateDataset rejects index items without an item file", () => {

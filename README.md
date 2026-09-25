@@ -15,7 +15,6 @@ A Next.js app for browsing **Fate/Grand Order** servants, filtering by gameplay 
   - Stats, deck, traits, alignment, attribute
   - Skill / NP cards with per-level value tables
   - Materials sections (ascension, skills, append, costume)
-- Favorites page (localStorage-backed)
 - Material tracker:
   - Track multiple servants
   - Per-servant target levels
@@ -42,7 +41,6 @@ app/
   servantpage/[id]/           # servant details
   track-materials/            # tracker pages
   material/[itemId]/          # material detail
-  favorites/                  # favorites table
 components/
   servantPage/                # servant detail UI sections
   materials/                  # farming card UI
@@ -85,12 +83,28 @@ Open [http://localhost:3000](http://localhost:3000).
 
 All game data is prebuilt into `public/data/` by `scripts/atlas/build.mjs`:
 
-- `servants-index.json` – home/filter/favorites table rows
+- `servants-index.json` – servant browser and filter rows
 - `servants/{id}.json` – trimmed servant detail (skills, NPs, materials, art)
 - `materials-index.json` – tracker inventory list
-- `farming/{itemId}.json` – best farming nodes per material
+- `items/{itemId}.json` – farming nodes and servant usage per material
+- `quests-index.json` – free quests by quest ID and phase, with location and availability
+- `quests/{questId}/{phase}.json` – free-quest waves, enemy HP/attack/level/class/traits, and rewards
 
-`.github/workflows/refresh-atlas-data.yml` runs the pipeline daily and commits only when the output changes; the commit triggers a Vercel deploy. The pipeline aborts without writing if Atlas looks unhealthy (more than 5% of quest fetches fail, or servant/material/farmed-item counts drop more than 5% from the last run). Requests are limited to 8 at a time and send a `User-Agent` identifying this repo.
+Free-quest stage data comes from `/nice/NA/quest/{questId}/{phase}` during
+`npm run data:refresh`, reusing the requests made for farming drops. Each phase
+is stored separately because first-clear and repeatable battles can differ.
+`status: "unavailable"` means Atlas returned 404; `enemyDataAvailable: false`
+means no enemy lineups were supplied. Unknown stats remain `null`, not zero.
+Enemy deck/position and the selected `enemyHash` are retained; Atlas can have
+multiple recorded enemy variants, and these files contain the default variant.
+The Free Quests browser at `/free-quests` shows only the last phase of quests
+marked `repeatLast`. Search and chapter filters persist while choosing quests.
+Detail pages at `/free-quests/{questId}` show drops per run, AP per item, sample
+counts, and enemy waves with expandable traits. Drop rates include stack size
+(`dropCount / runs × num`); they are averages, not probabilities. All pages use
+local data, with no runtime Atlas API calls.
+
+`.github/workflows/refresh-atlas-data.yml` runs the pipeline daily and commits only when the output changes; the commit triggers a Vercel deploy. The pipeline aborts without writing if Atlas looks unhealthy (any quest fetch still fails after retries, the free-quest index or a phase file is missing, or servant/material/farmed-item counts drop more than 5% from the last run). Requests are limited to 8 at a time and send a `User-Agent` identifying this repo.
 
 The deployed app makes zero runtime calls to `api.atlasacademy.io`. Images still come from `static.atlasacademy.io` via `next/image` (Vercel image optimization).
 
@@ -115,4 +129,3 @@ This app primarily targets `NA` data by default.
 1. Create a feature branch
 2. Make changes with TypeScript checks passing
 3. Open a PR with a clear summary and screenshots for UI changes
-

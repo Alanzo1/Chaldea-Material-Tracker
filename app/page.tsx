@@ -1,7 +1,14 @@
 import Link from "next/link"
-import { ClipboardList, Gem, Sparkles, Swords } from "lucide-react"
+import { ClipboardList, Gem, Map, Sparkles, Swords } from "lucide-react"
 
 const destinations = [
+  {
+    href: "/free-quests",
+    title: "Free Quests",
+    description: "Explore farming locations, compare drops, and inspect enemy waves.",
+    icon: Map,
+    color: "bg-emerald-300/20 text-emerald-200",
+  },
   {
     href: "/servants",
     title: "Servants",
@@ -44,7 +51,7 @@ export default function Home() {
           </p>
         </div>
 
-        <nav aria-label="Explore Chaldea" className="mt-10 grid gap-3 md:grid-cols-3 lg:mt-12">
+        <nav aria-label="Explore Chaldea" className="mt-10 grid gap-3 md:grid-cols-2 lg:mt-12">
           {destinations.map(({ href, title, description, icon: Icon, color }) => (
             <Link
               key={href}
