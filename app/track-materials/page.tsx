@@ -320,7 +320,7 @@ export default function TrackMaterialsPage() {
       FARMING_REQUEST_CONCURRENCY,
       async (material) => {
         try {
-          const r = await fetch(`/data/farming/${material.id}.json`, { cache: "force-cache" })
+          const r = await fetch(`/data/items/${material.id}.json`, { cache: "force-cache" })
           const p = await r.json()
           const node = Array.isArray(p?.nodes) ? p.nodes[0] : null
           return [material.id, Number(node?.apPerDrop ?? Infinity)] as const

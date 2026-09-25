@@ -172,7 +172,7 @@ export default function MaterialFarmingCard({
     setIsLoading(true)
     setErrorMessage("")
 
-    fetch(`/data/farming/${itemId}.json`, {
+    fetch(`/data/items/${itemId}.json`, {
       cache: "force-cache",
     })
       .then(async (response) => {

@@ -1,7 +1,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { buildItemUsage } from "./usage.mjs"
+import { buildItemFiles, buildItemUsage } from "./usage.mjs"
 
 const stage = (...pairs) => ({ qp: 1, items: pairs.map(([id, amount]) => ({ item: { id }, amount })) })
 
@@ -53,4 +53,18 @@ test("buildItemUsage breaks total ties by servant id", () => {
   const detail = { ascensionMaterials: { "0": stage([9, 1]) } }
   const usage = buildItemUsage(new Map([[30, detail], [10, detail], [20, detail]]))
   assert.deepEqual(usage["9"].map((entry) => entry.servantId), [10, 20, 30])
+})
+
+test("buildItemFiles covers every index item plus any farmed or used item", () => {
+  const files = buildItemFiles(
+    { "6503": [{ id: 1 }], "9000": [{ id: 2 }] },
+    { "6503": [{ servantId: 1, total: 5 }], "7001": [{ servantId: 2, total: 3 }] },
+    [6999, 6503]
+  )
+
+  assert.deepEqual(Object.keys(files), ["6503", "6999", "7001", "9000"])
+  assert.deepEqual(files["6503"], { nodes: [{ id: 1 }], usage: [{ servantId: 1, total: 5 }] })
+  // Review Focus 3: an index item nobody uses or drops still gets an (empty) file.
+  assert.deepEqual(files["6999"], { nodes: [], usage: [] })
+  assert.deepEqual(files["7001"], { nodes: [], usage: [{ servantId: 2, total: 3 }] })
 })

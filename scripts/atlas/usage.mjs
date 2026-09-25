@@ -43,3 +43,14 @@ export function buildItemUsage(servantDetails) {
   }
   return usage
 }
+
+// One file per item: farming nodes (Sources tab) + servant usage (Usage tab).
+export function buildItemFiles(farming, usage, itemIds) {
+  const ids = [
+    ...new Set([...itemIds.map(String), ...Object.keys(farming), ...Object.keys(usage)]),
+  ].sort((a, b) => Number(a) - Number(b))
+
+  return Object.fromEntries(
+    ids.map((id) => [id, { nodes: farming[id] ?? [], usage: usage[id] ?? [] }])
+  )
+}
