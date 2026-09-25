@@ -6,10 +6,9 @@ import Image from "next/image"
 import type { ReactNode } from "react"
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Boxes, Heart, Home, Pickaxe, Users } from "lucide-react"
+import { Boxes, Pickaxe, Users } from "lucide-react"
 
-import { HEADER_ACTION_BUTTON_CLASS, HeaderActionLink } from "@/components/HeaderActionLink"
-import { PageHeader } from "@/components/PageHeader"
+import { HEADER_ACTION_BUTTON_CLASS } from "@/components/HeaderActionLink"
 import * as materialTracker from "@/lib/material-tracker"
 import type { RequirementTotals, TrackedMaterialsState } from "@/lib/material-tracker"
 import { computeTrackerStateInWorker } from "@/lib/material-tracker-worker-client"
@@ -239,13 +238,13 @@ export default function TrackMaterialsPage() {
 
   useEffect(() => {
     setTrackerState(materialTracker.readTrackedMaterialsState())
-    fetch("/api/atlas/servants-index", { cache: "force-cache" })
+    fetch("/data/servants-index.json", { cache: "force-cache" })
       .then((r) => r.json())
-      .then((p) => setServantIndex(Array.isArray(p?.servants) ? p.servants : []))
+      .then((p) => setServantIndex(Array.isArray(p) ? p : []))
       .catch(() => setServantIndex([]))
-    fetch("/api/atlas/materials-index", { cache: "force-cache" })
+    fetch("/data/materials-index.json", { cache: "force-cache" })
       .then((r) => r.json())
-      .then((p) => setMaterialIndex(Array.isArray(p?.materials) ? p.materials : []))
+      .then((p) => setMaterialIndex(Array.isArray(p) ? p : []))
       .catch(() => setMaterialIndex([]))
     try {
       const raw = window.localStorage.getItem("trackerCurrentQp")
@@ -321,7 +320,7 @@ export default function TrackMaterialsPage() {
       FARMING_REQUEST_CONCURRENCY,
       async (material) => {
         try {
-          const r = await fetch(`/api/atlas/material-farming?itemId=${material.id}&limit=1`, { cache: "force-cache" })
+          const r = await fetch(`/data/farming/${material.id}.json`, { cache: "force-cache" })
           const p = await r.json()
           const node = Array.isArray(p?.nodes) ? p.nodes[0] : null
           return [material.id, Number(node?.apPerDrop ?? Infinity)] as const
@@ -344,9 +343,9 @@ export default function TrackMaterialsPage() {
   const handleAddServant = async (servant: ServantIndexItem) => {
     setAddingServantId(servant.id)
     try {
-      const r = await fetch(`/api/atlas/servant/${servant.id}`, { cache: "force-cache" })
+      const r = await fetch(`/data/servants/${servant.id}.json`, { cache: "force-cache" })
+      if (!r.ok) throw new Error("Failed to load servant")
       const payload = await r.json()
-      if (!r.ok) throw new Error(payload?.error || "Failed to load servant")
       setTrackerState(materialTracker.upsertTrackedServant({
         servantId: Number(payload.id),
         servantName: String(payload.name ?? servant.name),
@@ -384,19 +383,7 @@ export default function TrackMaterialsPage() {
     <main className="min-h-screen bg-background pb-16" suppressHydrationWarning>
       <div className="pointer-events-none fixed inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
 
-      <div className="sticky top-0 z-40 isolate">
-        <PageHeader
-          sticky={false}
-          title="Material Tracker"
-          subtitle={`${trackerState.servants.length} servant${trackerState.servants.length === 1 ? "" : "s"} tracked`}
-          actions={
-            <>
-              <HeaderActionLink href="/" icon={<Home className="size-3.5" />} label="Home" />
-              <HeaderActionLink href="/favorites" icon={<Heart className="size-3.5" />} label="Favorites" />
-            </>
-          }
-        />
-
+      <div className="sticky top-16 z-10 isolate">
         <div className="border-b border-border bg-background shadow-sm">
           <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-4 px-5 py-3 md:px-8">
             <TabBar

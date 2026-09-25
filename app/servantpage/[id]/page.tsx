@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Heart, Home, ListChecks } from "lucide-react"
 
-import { getServantData } from "@/app/services/api"
+import { getServantDetail, getServantsIndex } from "@/lib/atlas-data"
 import { HeaderActionLink } from "@/components/HeaderActionLink"
 import { ServantArtCard } from "@/components/servantPage/ServantArtCard"
 import { ServantHeaderCard } from "@/components/servantPage/ServantHeaderCard"
@@ -33,9 +33,15 @@ interface ServantPageProps {
   }>
 }
 
+export const dynamicParams = false
+
+export function generateStaticParams() {
+  return getServantsIndex().map((servant) => ({ id: String(servant.id) }))
+}
+
 export default async function ServantPage({ params }: ServantPageProps) {
   const { id } = await params
-  const servant = await getServantData(Number(id))
+  const servant = await getServantDetail(Number(id))
   const ascensionOptions = Object.entries(
     servant.raw?.extraAssets?.charaGraph?.ascension ?? {}
   )

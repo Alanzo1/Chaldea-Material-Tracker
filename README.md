@@ -39,7 +39,6 @@ A Next.js app for browsing **Fate/Grand Order** servants, filtering by gameplay 
 
 ```text
 app/
-  api/atlas/                  # server API routes/proxies
   servantpage/[id]/           # servant details
   track-materials/            # tracker pages
   material/[itemId]/          # material detail
@@ -52,9 +51,9 @@ lib/
   material-tracker.ts         # tracker state + calculations
   material-tracker.worker.ts  # web worker math offload
 scripts/
-  build-drop-data.mjs         # prebuild drop dataset generation
-data/
-  drop-data.json              # generated farming data
+  atlas/                      # daily Atlas → static JSON pipeline (Node built-ins only)
+public/
+  data/                       # generated, committed static JSON served from CDN
 ```
 
 ## Getting Started
@@ -76,24 +75,24 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Scripts
 
 - `npm run dev` – run local dev server
-- `npm run build:drops` – build `data/drop-data.json`
-- `npm run build` – production build (`next build --webpack`)
+- `npm run data:refresh` – fetch Atlas exports and regenerate `public/data/`
+- `npm test` – pipeline tests + guard that app code never calls the Atlas API (`node --test`)
+- `npm run build` – production build (`next build --webpack`), no Atlas calls
 - `npm run start` – run production server
 - `npm run lint` – lint
 
 ## Data & Build Notes
 
-The project prebuilds farming drop data via:
+All game data is prebuilt into `public/data/` by `scripts/atlas/build.mjs`:
 
-- `scripts/build-drop-data.mjs`
+- `servants-index.json` – home/filter/favorites table rows
+- `servants/{id}.json` – trimmed servant detail (skills, NPs, materials, art)
+- `materials-index.json` – tracker inventory list
+- `farming/{itemId}.json` – best farming nodes per material
 
-If Atlas endpoints are unavailable, the script falls back without blocking build.
+`.github/workflows/refresh-atlas-data.yml` runs the pipeline daily and commits only when the output changes; the commit triggers a Vercel deploy. The pipeline aborts without writing if Atlas looks unhealthy (more than 5% of quest fetches fail, or servant/material/farmed-item counts drop more than 5% from the last run). Requests are limited to 8 at a time and send a `User-Agent` identifying this repo.
 
-You can also skip drop-data generation entirely:
-
-```bash
-SKIP_DROP_BUILD=1 npm run build
-```
+The deployed app makes zero runtime calls to `api.atlasacademy.io`. Images still come from `static.atlasacademy.io` via `next/image` (Vercel image optimization).
 
 ## Deployment
 
@@ -101,7 +100,7 @@ Recommended on Vercel.
 
 - Root layout includes Vercel Analytics.
 - Build uses webpack for stability.
-- API routes and pages are resilient to temporary Atlas fetch failures (degrade gracefully).
+- Builds use committed data only; Atlas outages cannot break a deploy.
 
 ## API Sources
 
