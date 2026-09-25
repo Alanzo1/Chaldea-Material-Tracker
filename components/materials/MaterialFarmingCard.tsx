@@ -172,17 +172,15 @@ export default function MaterialFarmingCard({
     setIsLoading(true)
     setErrorMessage("")
 
-    fetch(`/api/atlas/material-farming?itemId=${itemId}&limit=6`, {
+    fetch(`/data/farming/${itemId}.json`, {
       cache: "force-cache",
     })
       .then(async (response) => {
-        const payload = (await response.json()) as MaterialFarmingResponse
+        // Items with no known farming nodes may have no file; treat as empty.
+        if (response.status === 404) return { nodes: [] } as MaterialFarmingResponse
+        if (!response.ok) throw new Error("Failed to fetch farming data")
 
-        if (!response.ok) {
-          throw new Error(payload.error || "Failed to fetch farming data")
-        }
-
-        return payload
+        return (await response.json()) as MaterialFarmingResponse
       })
       .then((payload) => {
         if (cancelled) return
