@@ -15,6 +15,7 @@ type ThemeMode = "light" | "dark"
 const navItems = [
   { href: "/", label: "Servants" },
   { href: "/items", label: "Items" },
+  { href: "/favorites", label: "Favorites" },
   { href: "/track-materials", label: "Planning" },
 ]
 
@@ -30,7 +31,7 @@ function NavLink({ href, label }: { href: string; label: string }) {
     <Link
       href={href}
       className={cn(
-        "flex h-11 items-center rounded-md px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+        "flex h-11 shrink-0 items-center rounded-md px-2.5 text-sm sm:px-4 font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
         isActive && "bg-muted text-foreground"
       )}
     >
@@ -75,7 +76,7 @@ export function NavBar() {
           </span>
         </Link>
 
-        <nav aria-label="Primary navigation" className="flex min-w-0 items-center gap-1">
+        <nav aria-label="Primary navigation" className="flex min-w-0 items-center gap-1 overflow-x-auto [scrollbar-width:none]">
           {navItems.map((item) => (
             <NavLink key={`${item.label}-${item.href}`} href={item.href} label={item.label} />
           ))}

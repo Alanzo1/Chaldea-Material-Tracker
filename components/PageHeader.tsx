@@ -5,58 +5,29 @@ import { cn } from "@/lib/utils"
 interface PageHeaderProps {
   title: string
   subtitle?: string
-  eyebrow?: string
   actions?: ReactNode
   className?: string
-  sticky?: boolean
 }
 
+// In-page title block. Site navigation lives in the global NavBar (app/layout.tsx);
+// `actions` is for page-specific controls such as a Back link.
 export function PageHeader({
   title,
   subtitle,
-  eyebrow = "Fate / Grand Order",
   actions,
   className,
-  sticky = true,
 }: PageHeaderProps) {
   return (
-    <header
-      className={cn(
-        sticky
-          ? "sticky top-0 z-20 border-b border-border bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/90"
-          : "border-b border-border bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/90",
-        className
-      )}
-    >
-      <div className="mx-auto flex w-full max-w-[1600px] items-center gap-4 px-5 py-4 md:px-8">
-        <div className="flex-shrink-0">
-          <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
-            {eyebrow}
-          </p>
-          <h1 className="mt-0.5 font-serif text-2xl font-bold leading-none tracking-tight text-foreground">
-            {title}
-          </h1>
-        </div>
-
-        <div className="mx-2 hidden h-8 w-px bg-border md:block" />
-
-        <div className="flex flex-1 flex-wrap items-center gap-2">
-          {actions}
-        </div>
-
+    <header className={cn("flex flex-wrap items-end justify-between gap-4", className)}>
+      <div className="min-w-0">
+        <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground">
+          {title}
+        </h1>
         {subtitle ? (
-          <div className="hidden flex-shrink-0 md:block">
-            <span className="text-[11px] font-medium text-muted-foreground">
-              {subtitle}
-            </span>
-          </div>
+          <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
         ) : null}
       </div>
-      {subtitle ? (
-        <div className="mx-auto w-full max-w-[1600px] px-5 pb-3 md:hidden md:px-8">
-          <p className="text-[11px] text-muted-foreground">{subtitle}</p>
-        </div>
-      ) : null}
+      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </header>
   )
 }

@@ -4,7 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { useParams, usePathname } from "next/navigation"
-import { ArrowLeft, Home, ListChecks } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 
 import {
   calculateServantRequirements,
@@ -918,14 +918,14 @@ export default function TrackedServantDetailPage() {
   if (!servant) {
     return (
       <main className="min-h-screen bg-background pb-16">
-        <PageHeader
-          title="Tracked Servant"
-          subtitle="Servant not found."
-          actions={
-            <HeaderActionLink href="/track-materials" icon={<ArrowLeft className="size-3.5" />} label="Back to Tracker" />
-          }
-        />
-        <div className="mx-auto max-w-5xl px-6 pt-8">
+        <div className="mx-auto flex max-w-5xl flex-col gap-6 px-6 pt-8">
+          <PageHeader
+            title="Tracked Servant"
+            subtitle="Servant not found."
+            actions={
+              <HeaderActionLink href="/track-materials" icon={<ArrowLeft className="size-3.5" />} label="Back to Tracker" />
+            }
+          />
           <p className="text-sm text-muted-foreground">Tracked servant not found.</p>
         </div>
       </main>
@@ -939,18 +939,14 @@ export default function TrackedServantDetailPage() {
       {/* Ambient gradient */}
       <div className="pointer-events-none fixed inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
 
-      <PageHeader
-        title={servant.servantName}
-        subtitle={`${servant.className} · ${"★".repeat(servant.rarity)}`}
-        actions={
-          <>
-            <HeaderActionLink href="/" icon={<Home className="size-3.5" />} label="Home" />
-            <HeaderActionLink href="/track-materials" icon={<ListChecks className="size-3.5" />} label="Tracker" />
-          </>
-        }
-      />
-
       <div className="relative mx-auto flex max-w-6xl flex-col gap-5 px-5 pt-6 md:px-8">
+        <PageHeader
+          title={servant.servantName}
+          subtitle={`${servant.className} · ${"★".repeat(servant.rarity)}`}
+          actions={
+            <HeaderActionLink href="/track-materials" icon={<ArrowLeft className="size-3.5" />} label="Back to Tracker" />
+          }
+        />
 
         {/* ── Target Levels card ─────────────────────────────────────────── */}
         <section className="rounded-xl border border-border bg-card/60 p-5">

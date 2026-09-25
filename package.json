@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "data:refresh": "node scripts/atlas/build.mjs",
-    "test": "node --test \"scripts/atlas/*.test.mjs\" \"scripts/guards/*.test.mjs\"",
+    "test": "node --test \"scripts/atlas/*.test.mjs\" \"scripts/guards/*.test.mjs\" \"lib/*.test.mjs\"",
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
