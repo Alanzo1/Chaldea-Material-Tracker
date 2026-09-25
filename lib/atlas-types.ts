@@ -17,4 +17,12 @@ export interface MaterialIndexEntry {
   id: number
   name: string
   icon: string
+  /** From the quoted first line of the Atlas detail, e.g. "Skill Up & Ascension Material". */
+  category: string
+  /** Description without the category line. */
+  detail: string
+  /** Atlas item type: "skillLvUp" | "tdLvUp" | "eventItem" | … */
+  type: string
+  /** Rarity frame: "bronze" | "silver" | "gold" | … */
+  background: string
 }
