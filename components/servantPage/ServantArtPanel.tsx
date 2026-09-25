@@ -62,7 +62,7 @@ export function ServantArtPanel({ name, options, actions }: ServantArtPanelProps
 
       <div className="absolute inset-x-0 top-0 flex flex-wrap items-center gap-2 p-3">
         <Link
-          href="/"
+          href="/servants"
           className="flex h-10 items-center gap-2 rounded-full bg-background/70 px-4 text-sm font-medium text-foreground backdrop-blur transition-colors hover:bg-background/90"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
