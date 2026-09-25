@@ -1,57 +1,22 @@
-import { ArrowLeft } from "lucide-react"
+import { notFound } from "next/navigation"
 
-import { HeaderActionLink } from "@/components/HeaderActionLink"
-import MaterialFarmingCard from "@/components/materials/MaterialFarmingCard"
+import { ItemBrowser } from "@/components/materials/ItemBrowser"
+import { getMaterial, getMaterialsIndex } from "@/lib/atlas-data"
 
 interface MaterialPageProps {
-  params: Promise<{
-    itemId: string
-  }>
-  searchParams: Promise<{
-    name?: string
-    icon?: string
-    detail?: string
-    returnTo?: string
-  }>
+  params: Promise<{ itemId: string }>
 }
 
-function decodeParam(value?: string) {
-  if (!value) return ""
-  try {
-    return decodeURIComponent(value)
-  } catch {
-    return value
-  }
+export const dynamicParams = false
+
+export function generateStaticParams() {
+  return getMaterialsIndex().map((material) => ({ itemId: String(material.id) }))
 }
 
-export default async function MaterialPage({
-  params,
-  searchParams,
-}: MaterialPageProps) {
+export default async function MaterialPage({ params }: MaterialPageProps) {
   const { itemId } = await params
-  const resolvedSearchParams = await searchParams
+  const material = getMaterial(Number(itemId))
+  if (!material) notFound()
 
-  const parsedItemId = Number(itemId)
-  const itemName = decodeParam(resolvedSearchParams.name) || `Material ${itemId}`
-  const itemIcon = decodeParam(resolvedSearchParams.icon)
-  const itemDescription = decodeParam(resolvedSearchParams.detail)
-  const returnTo = decodeParam(resolvedSearchParams.returnTo)
-  const backHref = returnTo.startsWith("/") ? returnTo : "/"
-
-  return (
-    <main className="pb-10">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 pt-6">
-        <div>
-          <HeaderActionLink href={backHref} icon={<ArrowLeft className="size-3.5" />} label="Back" className="w-fit" />
-        </div>
-        <MaterialFarmingCard
-          itemId={Number.isFinite(parsedItemId) ? parsedItemId : 0}
-          itemName={itemName}
-          itemIcon={itemIcon}
-          itemDescription={itemDescription}
-          showOwnershipControls
-        />
-      </div>
-    </main>
-  )
+  return <ItemBrowser items={getMaterialsIndex()} selected={material} />
 }

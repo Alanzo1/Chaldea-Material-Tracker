@@ -39,7 +39,7 @@ const EMPTY_TOTALS: RequirementTotals = {
   progressPercent: 100,
 }
 
-const MaterialFarmingCard = dynamic(() => import("@/components/materials/MaterialFarmingCard"), {
+const ItemSources = dynamic(() => import("@/components/materials/MaterialSourcesList").then((mod) => mod.ItemSources), {
   ssr: false,
   loading: () => (
     <div className="rounded-lg border border-border bg-card/70 p-4">
@@ -552,7 +552,7 @@ export default function TrackMaterialsPage() {
               {aggregate.materialsWithOwned.map((material) => (
                 <Link
                   key={material.id}
-                  href={`/material/${material.id}?name=${encodeURIComponent(material.name)}&icon=${encodeURIComponent(material.icon)}&returnTo=${encodeURIComponent("/track-materials")}`}
+                  href={`/material/${material.id}`}
                   className="group flex items-center gap-3 rounded-lg border border-border bg-background/40 p-3 transition-all hover:bg-muted/40"
                 >
                   <Image src={material.icon} alt={material.name} width={28} height={28} className="rounded-md" />
@@ -622,7 +622,7 @@ export default function TrackMaterialsPage() {
                         </div>
                       </div>
                       {isExpanded && (
-                        <MaterialFarmingCard itemId={material.id} itemName={material.name} itemIcon={material.icon} />
+                        <ItemSources itemId={material.id} />
                       )}
                     </article>
                   )
