@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { useParams, usePathname } from "next/navigation"
+import { useParams } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 
 import {
@@ -347,9 +347,8 @@ function buildStageProgressRows(
   return rows
 }
 
-function getMaterialHref(material: { id: number; name: string; icon: string }, returnTo: string) {
-  if (!material.id) return null
-  return `/material/${material.id}?name=${encodeURIComponent(material.name)}&icon=${encodeURIComponent(material.icon)}&returnTo=${encodeURIComponent(returnTo)}`
+function getMaterialHref(material: { id: number }) {
+  return material.id ? `/material/${material.id}` : null
 }
 
 // ─── Tab config ──────────────────────────────────────────────────────────────
@@ -380,7 +379,6 @@ function StageProgressCard({
   borderColor: string
   onOwnedChange: (id: number, value: string) => void
 }) {
-  const pathname = usePathname()
 
   return (
     <div className={`rounded-xl border ${borderColor} bg-card/60 p-4`}>
@@ -411,7 +409,7 @@ function StageProgressCard({
             >
               <div className="flex items-center gap-2">
                 {(() => {
-                  const href = getMaterialHref(material, pathname || "/track-materials")
+                  const href = getMaterialHref(material)
                   if (!href) {
                     return (
                       <>
@@ -1124,7 +1122,7 @@ export default function TrackedServantDetailPage() {
           {totalRequirements.materialsWithOwned.length > 0 ? (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {totalRequirements.materialsWithOwned.map((material) => {
-                const href = getMaterialHref(material, `/track-materials/${servant.servantId}`)
+                const href = getMaterialHref(material)
                 if (!href) {
                   return (
                     <div

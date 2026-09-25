@@ -182,12 +182,12 @@ export default async function ServantPage({ params }: ServantPageProps) {
     hasMaterials && {
       id: "materials",
       label: "Materials",
-      content: <MaterialsSection {...materials} returnTab="materials" />,
+      content: <MaterialsSection {...materials} />,
     },
     hasMaterials && {
       id: "summary",
       label: "Mat Summary",
-      content: <MaterialsSummarySection {...materials} returnTab="summary" />,
+      content: <MaterialsSummarySection {...materials} />,
     },
   ]
   const tabs = tabCandidates.filter((tab): tab is ServantTab => Boolean(tab))

@@ -2,6 +2,7 @@ import "./globals.css"
 import { Analytics } from "@vercel/analytics/next"
 
 import { ServantProvider } from "@/app/contexts/HomePageContext"
+import { ItemSearchProvider } from "@/app/contexts/ItemSearchContext"
 import { NavBar } from "@/components/NavBar"
 import { getServantsIndex } from "@/lib/atlas-data"
 
@@ -29,7 +30,7 @@ export default function RootLayout({
         />
         <ServantProvider initialServants={servants}>
           <NavBar />
-          {children}
+          <ItemSearchProvider>{children}</ItemSearchProvider>
         </ServantProvider>
         <Analytics />
       </body>

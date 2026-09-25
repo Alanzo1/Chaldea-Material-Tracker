@@ -13,7 +13,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useState } from "react"
-import { usePathname } from "next/navigation"
 
 interface MaterialItemLike {
   amount?: number
@@ -47,7 +46,6 @@ interface MaterialRow {
 
 interface MaterialTableProps {
   rows: MaterialRow[]
-  returnTo: string
 }
 
 interface MaterialsSectionProps {
@@ -59,8 +57,6 @@ interface MaterialsSectionProps {
   costumeNames?: Record<string, string>
   skillMultiplier?: number
   appendSkillMultiplier?: number
-  /** Servant page tab id; material links return to `${pathname}#${returnTab}`. */
-  returnTab?: string
 }
 
 function sortStageKeys(a: string, b: string) {
@@ -218,31 +214,11 @@ function getCostumeStageLabeler(costumeMaterials: MaterialStageMap = {}, costume
   return (stageKey: string) => costumeNames[stageKey] ?? `Costume ${order.indexOf(stageKey) + 1}`
 }
 
-function normalizeMaterialDetail(detail?: string) {
-  if (!detail) return ""
-  return detail.replace(/["\r\n]+/g, " ").replace(/\s+/g, " ").trim()
+function getMaterialHref(material: { id?: number }) {
+  return material.id ? `/material/${material.id}#usage` : null
 }
 
-function getMaterialHref(
-  material: { id?: number; name: string; icon: string; detail?: string },
-  returnTo?: string
-) {
-  if (!material.id) return null
-  const nameParam = encodeURIComponent(material.name)
-  const iconParam = encodeURIComponent(material.icon)
-  const detail = normalizeMaterialDetail(material.detail)
-  const detailParam = detail ? `&detail=${encodeURIComponent(detail)}` : ""
-  const returnToParam = returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""
-  return `/material/${material.id}?name=${nameParam}&icon=${iconParam}${detailParam}${returnToParam}`
-}
-
-// Back links from a material page land on the same servant page tab.
-function useReturnTo(returnTab?: string) {
-  const pathname = usePathname()
-  return returnTab ? `${pathname}#${returnTab}` : pathname
-}
-
-function MaterialTable({ rows, returnTo }: MaterialTableProps) {
+function MaterialTable({ rows }: MaterialTableProps) {
   if (!rows.length) return null
 
   return (
@@ -263,7 +239,7 @@ function MaterialTable({ rows, returnTo }: MaterialTableProps) {
               {row.materials.length ? (
                 <div className="flex flex-wrap gap-3">
                   {row.materials.map((material) => {
-                    const href = getMaterialHref(material, returnTo)
+                    const href = getMaterialHref(material)
 
                     if (!href) {
                       return (
@@ -351,7 +327,6 @@ function getMaterialTabs({
 }
 
 export function MaterialsSection(props: MaterialsSectionProps) {
-  const returnTo = useReturnTo(props.returnTab)
   const tabs = getMaterialTabs(props)
   const [activeTabId, setActiveTabId] = useState(tabs[0]?.id ?? "ascension")
 
@@ -374,7 +349,7 @@ export function MaterialsSection(props: MaterialsSectionProps) {
           </Button>
         ))}
       </div>
-      <MaterialTable rows={activeTab.rows} returnTo={returnTo} />
+      <MaterialTable rows={activeTab.rows} />
     </div>
   )
 }
@@ -385,9 +360,7 @@ export function MaterialsSummarySection({
   appendSkillMaterials,
   skillMultiplier = 3,
   appendSkillMultiplier = 3,
-  returnTab,
 }: MaterialsSectionProps) {
-  const returnTo = useReturnTo(returnTab)
   const ascensionTotals = addStageMapToTotals(createEmptyTotals(), ascensionMaterials, 1)
   const skillTotals = addStageMapToTotals(createEmptyTotals(), skillMaterials, skillMultiplier)
   const appendTotals = addStageMapToTotals(
@@ -424,7 +397,7 @@ export function MaterialsSummarySection({
                 {materials.length ? (
                   <div className="flex flex-wrap gap-3">
                     {materials.map((material) => {
-                      const href = getMaterialHref(material, returnTo)
+                      const href = getMaterialHref(material)
 
                       if (!href) {
                         return (

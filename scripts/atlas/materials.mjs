@@ -1,4 +1,5 @@
 const UPGRADE_USES = ["skill", "appendSkill", "ascension", "costume"]
+const DEFAULT_CATEGORY = "Material"
 
 function shouldIncludeItem(item) {
   const id = Number(item.id ?? 0)
@@ -6,6 +7,19 @@ function shouldIncludeItem(item) {
 
   const uses = Array.isArray(item.uses) ? item.uses : []
   return uses.some((use) => UPGRADE_USES.includes(String(use)))
+}
+
+// Atlas item details start with a quoted category line: "Skill Up Material"\nFlavor text…
+export function splitItemDetail(detail) {
+  const text = String(detail ?? "").replace(/\r/g, "").trim()
+  const match = text.match(/^"([^"\n]+)"\s*/)
+  const category = match ? match[1].trim() : ""
+  const rest = match ? text.slice(match[0].length) : text
+
+  return {
+    category: category || DEFAULT_CATEGORY,
+    detail: rest.replace(/\s+/g, " ").trim(),
+  }
 }
 
 export function buildMaterialsIndex(items) {
@@ -17,6 +31,9 @@ export function buildMaterialsIndex(items) {
       id: Number(item.id ?? 0),
       name: String(item.name ?? "").trim(),
       icon: String(item.icon ?? "").trim(),
+      ...splitItemDetail(item.detail),
+      type: String(item.type ?? ""),
+      background: String(item.background ?? ""),
     }))
     .filter((item) => item.id > 0 && item.name.length > 0 && item.icon.length > 0)
     .filter((item) => {

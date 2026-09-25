@@ -5,6 +5,7 @@ import { aggregateDrops, buildFarmingIndex, buildQuestMeta, selectQuestPhaseJobs
 import { fetchJson, mapWithRetryPass } from "./fetch.mjs"
 import { buildMaterialsIndex } from "./materials.mjs"
 import { buildServantsIndex, trimServantDetail } from "./servants.mjs"
+import { buildItemFiles, buildItemUsage } from "./usage.mjs"
 
 const REGION = "NA"
 const BASE_URL = "https://api.atlasacademy.io"
@@ -55,12 +56,13 @@ async function run() {
     materialsIndex.map((m) => m.id),
     buildQuestMeta(wars)
   )
+  const itemFiles = buildItemFiles(farming, buildItemUsage(servantDetails), materialsIndex.map((m) => m.id))
 
   const dataset = {
     servantsIndex,
     servantDetails,
     materialsIndex,
-    farming,
+    items: itemFiles,
     questFetch: { total: jobs.length, failed },
   }
 
@@ -72,7 +74,7 @@ async function run() {
   await writeDataset(OUT_DIR, dataset)
   console.log(
     `Wrote ${servantsIndex.length} servants, ${materialsIndex.length} materials, ` +
-      `${Object.keys(farming).length} farming files (quest failures ${failed}/${jobs.length}) to ${OUT_DIR}`
+      `${Object.keys(itemFiles).length} item files (quest failures ${failed}/${jobs.length}) to ${OUT_DIR}`
   )
 }
 
