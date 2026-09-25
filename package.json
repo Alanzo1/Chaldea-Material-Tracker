@@ -5,6 +5,7 @@
   "scripts": {
     "build:drops": "node scripts/build-drop-data.mjs",
     "prebuild": "npm run build:drops",
+    "test": "node --test \"scripts/atlas/*.test.mjs\"",
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
