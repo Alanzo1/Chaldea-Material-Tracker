@@ -12,3 +12,9 @@ export interface ServantIndexEntry {
   alignments: string[]
   stars: string
 }
+
+export interface MaterialIndexEntry {
+  id: number
+  name: string
+  icon: string
+}

@@ -2,56 +2,10 @@ import Image from "next/image"
 import Link from "next/link"
 
 import { HeaderActionLink } from "@/components/HeaderActionLink"
+import { getMaterialsIndex } from "@/lib/atlas-data"
 
-const ITEMS_URL = "https://api.atlasacademy.io/export/NA/nice_item.json"
-
-interface AtlasItem {
-  id?: number
-  name?: string
-  icon?: string
-  uses?: string[]
-}
-
-function shouldIncludeItem(item: AtlasItem) {
-  const id = Number(item.id ?? 0)
-  if (!id || id === 6999) return true
-
-  const uses = Array.isArray(item.uses) ? item.uses : []
-  return uses.some((use) =>
-    ["skill", "appendSkill", "ascension", "costume"].includes(String(use))
-  )
-}
-
-async function getItems() {
-  const response = await fetch(ITEMS_URL, {
-    next: { revalidate: 86400, tags: ["atlas:materials-index"] },
-  })
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch items (${response.status})`)
-  }
-
-  const payload = (await response.json()) as AtlasItem[]
-  const seen = new Set<number>()
-
-  return payload
-    .filter(shouldIncludeItem)
-    .map((item) => ({
-      id: Number(item.id ?? 0),
-      name: String(item.name ?? "").trim(),
-      icon: String(item.icon ?? "").trim(),
-    }))
-    .filter((item) => item.id > 0 && item.name && item.icon)
-    .filter((item) => {
-      if (seen.has(item.id)) return false
-      seen.add(item.id)
-      return true
-    })
-    .sort((left, right) => left.name.localeCompare(right.name))
-}
-
-export default async function ItemsPage() {
-  const items = await getItems()
+export default function ItemsPage() {
+  const items = getMaterialsIndex()
 
   return (
     <main className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
