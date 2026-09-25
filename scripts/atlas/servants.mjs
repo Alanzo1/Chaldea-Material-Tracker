@@ -275,15 +275,22 @@ export function trimServantDetail(servant) {
   }
 
   const faces = servant.extraAssets?.faces?.ascension ?? {}
+  const costumeFaces = servant.extraAssets?.faces?.costume ?? {}
   const charaGraph = servant.extraAssets?.charaGraph ?? {}
   detail.extraAssets = {
-    faces: { ascension: faces },
+    faces: { ascension: faces, costume: costumeFaces },
     charaGraph: {
       ascension: charaGraph.ascension ?? {},
       costume: charaGraph.costume ?? {},
     },
   }
   detail.portrait = faces["1"] ?? faces[1] ?? null
+  // Only costume names from the lore profile (keyed like charaGraph.costume); the rest of the lore is dropped.
+  detail.costumeNames = Object.fromEntries(
+    Object.entries(servant.profile?.costume ?? {})
+      .map(([key, costume]) => [String(costume?.battleCharaId ?? key), String(costume?.name || costume?.shortName || "").trim()])
+      .filter(([, name]) => name)
+  )
 
   return detail
 }

@@ -3,14 +3,7 @@
 import { useState } from "react"
 
 import { NoblePhantasmCard } from "@/components/servantPage/NoblePhantasmCard"
-import { MaterialsSection } from "@/components/servantPage/MaterialsSection"
 import { SkillCard } from "@/components/servantPage/SkillCard"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 
 interface SkillLike {
@@ -40,17 +33,6 @@ interface NoblePhantasmLike {
   icon?: string
   detail?: string
   functions?: any[]
-}
-
-interface SkillsSectionProps {
-  skills: SkillLike[]
-  noblePhantasms: NoblePhantasmLike[]
-  appendPassive: AppendPassiveEntry[]
-  classPassive: SkillLike[]
-  ascensionMaterials?: Record<string, any>
-  skillMaterials?: Record<string, any>
-  appendSkillMaterials?: Record<string, any>
-  costumeMaterials?: Record<string, any>
 }
 
 function normalizeText(value?: string) {
@@ -550,136 +532,66 @@ function NPVariantTabs({ noblePhantasms }: { noblePhantasms: NoblePhantasmLike[]
   )
 }
 
-export function SkillsSection({
-  skills,
-  noblePhantasms,
-  appendPassive,
-  classPassive,
-  ascensionMaterials,
-  skillMaterials,
-  appendSkillMaterials,
-  costumeMaterials,
-}: SkillsSectionProps) {
+export function ActiveSkillsSection({ skills }: { skills: SkillLike[] }) {
+  const groups = groupActiveSkills(skills)
+  if (!groups.length) return null
+
+  return (
+    <div className="grid gap-4">
+      {groups.map((group, index) =>
+        group.length > 1 ? (
+          <SkillVariantTabs key={`active-skill-group-${index}`} skills={group} />
+        ) : (
+          <SkillGroup key={`active-skill-single-${index}`} skills={group} />
+        )
+      )}
+    </div>
+  )
+}
+
+export function NoblePhantasmSection({ noblePhantasms }: { noblePhantasms: NoblePhantasmLike[] }) {
+  const groups = groupNoblePhantasms(noblePhantasms)
+  if (!groups.length) return null
+
+  return (
+    <div className="grid gap-4">
+      {groups.map((group, index) => {
+        if (group.length > 1) {
+          return <NPVariantTabs key={`np-group-${index}`} noblePhantasms={group} />
+        }
+
+        const np = group[0]
+        const titleParts = splitNameAndRank(np.name)
+        const { baseDescription, overchargeDescription } = getNPDescriptions(np)
+        const { levelRows, overchargeRows } = getNPTableData(np)
+
+        return (
+          <NoblePhantasmCard
+            key={`np-single-${index}`}
+            nameImage={np.icon}
+            name={titleParts.name}
+            rank={titleParts.rank || np.rank}
+            card={np.card}
+            npType={np.type}
+            baseDescription={baseDescription}
+            overchargeDescription={overchargeDescription}
+            levelRows={levelRows}
+            overchargeRows={overchargeRows}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+export function AppendSkillsSection({ appendPassive }: { appendPassive: AppendPassiveEntry[] }) {
   const appendSkills = appendPassive
     .map((entry) => entry.skill)
     .filter(Boolean) as SkillLike[]
-  const activeSkillGroups = groupActiveSkills(skills)
-  const noblePhantasmGroups = groupNoblePhantasms(noblePhantasms)
-  const activeSkillCount = Math.max(activeSkillGroups.length, 1)
-  const appendSkillCount = Math.max(appendSkills.length, 1)
-  const hasMaterials =
-    Object.keys(ascensionMaterials ?? {}).length > 0 ||
-    Object.keys(skillMaterials ?? {}).length > 0 ||
-    Object.keys(appendSkillMaterials ?? {}).length > 0 ||
-    Object.keys(costumeMaterials ?? {}).length > 0
 
-  if (
-    !activeSkillGroups.length &&
-    !noblePhantasmGroups.length &&
-    !appendSkills.length &&
-    !classPassive.length &&
-    !hasMaterials
-  ) {
-    return null
-  }
+  return <SkillGroup skills={appendSkills} stripValues />
+}
 
-  return (
-    <div className="space-y-6">
-      {activeSkillGroups.length ? (
-        <Card className="gap-4 py-4">
-          <CardHeader className="px-4">
-            <CardTitle className="text-lg">Active Skills</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4">
-            <div className="grid gap-4">
-              {activeSkillGroups.map((skillGroup, index) =>
-                skillGroup.length > 1 ? (
-                  <SkillVariantTabs
-                    key={`active-skill-group-${index}`}
-                    skills={skillGroup}
-                  />
-                ) : (
-                  <SkillGroup
-                    key={`active-skill-single-${index}`}
-                    skills={skillGroup}
-                  />
-                )
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-      {noblePhantasmGroups.length ? (
-        <Card className="gap-4 py-4">
-          <CardHeader className="px-4">
-            <CardTitle className="text-lg">Noble Phantasm</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4">
-            <div className="grid gap-4">
-              {noblePhantasmGroups.map((npGroup, index) =>
-                npGroup.length > 1 ? (
-                  <NPVariantTabs
-                    key={`np-group-${index}`}
-                    noblePhantasms={npGroup}
-                  />
-                ) : (
-                  (() => {
-                    const np = npGroup[0]
-                    const titleParts = splitNameAndRank(np.name)
-                    const { baseDescription, overchargeDescription } = getNPDescriptions(np)
-                    const { levelRows, overchargeRows } = getNPTableData(np)
-
-                    return (
-                      <NoblePhantasmCard
-                        key={`np-single-${index}`}
-                        nameImage={np.icon}
-                        name={titleParts.name}
-                        rank={titleParts.rank || np.rank}
-                        card={np.card}
-                        npType={np.type}
-                        baseDescription={baseDescription}
-                        overchargeDescription={overchargeDescription}
-                        levelRows={levelRows}
-                        overchargeRows={overchargeRows}
-                      />
-                    )
-                  })()
-                )
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-      {appendSkills.length ? (
-        <Card className="gap-4 py-4">
-          <CardHeader className="px-4">
-            <CardTitle className="text-lg">Append Skills</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4">
-            <SkillGroup skills={appendSkills} stripValues />
-          </CardContent>
-        </Card>
-      ) : null}
-      {classPassive.length ? (
-        <Card className="gap-4 py-4">
-          <CardHeader className="px-4">
-            <CardTitle className="text-lg">Class Skills</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4">
-            <SkillGroup skills={classPassive} isPassive />
-          </CardContent>
-        </Card>
-      ) : null}
-      {hasMaterials ? (
-        <MaterialsSection
-          ascensionMaterials={ascensionMaterials}
-          skillMaterials={skillMaterials}
-          appendSkillMaterials={appendSkillMaterials}
-          costumeMaterials={costumeMaterials}
-          skillMultiplier={activeSkillCount}
-          appendSkillMultiplier={appendSkillCount}
-        />
-      ) : null}
-    </div>
-  )
+export function ClassSkillsSection({ classPassive }: { classPassive: SkillLike[] }) {
+  return <SkillGroup skills={classPassive} isPassive />
 }

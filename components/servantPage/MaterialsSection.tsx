@@ -5,12 +5,6 @@ import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
   Table,
   TableBody,
   TableCell,
@@ -53,6 +47,7 @@ interface MaterialRow {
 
 interface MaterialTableProps {
   rows: MaterialRow[]
+  returnTo: string
 }
 
 interface MaterialsSectionProps {
@@ -60,8 +55,12 @@ interface MaterialsSectionProps {
   skillMaterials?: MaterialStageMap
   appendSkillMaterials?: MaterialStageMap
   costumeMaterials?: MaterialStageMap
+  /** Costume id -> display name; costumes without one show "Costume N". */
+  costumeNames?: Record<string, string>
   skillMultiplier?: number
   appendSkillMultiplier?: number
+  /** Servant page tab id; material links return to `${pathname}#${returnTab}`. */
+  returnTab?: string
 }
 
 function sortStageKeys(a: string, b: string) {
@@ -214,8 +213,9 @@ function getAscensionStageLabel(stageKey: string) {
   return `Ascension ${stage + 1}`
 }
 
-function getCostumeStageLabel(stageKey: string) {
-  return `Costume ${stageKey}`
+function getCostumeStageLabeler(costumeMaterials: MaterialStageMap = {}, costumeNames: Record<string, string> = {}) {
+  const order = Object.keys(costumeMaterials).sort(sortStageKeys)
+  return (stageKey: string) => costumeNames[stageKey] ?? `Costume ${order.indexOf(stageKey) + 1}`
 }
 
 function normalizeMaterialDetail(detail?: string) {
@@ -236,9 +236,13 @@ function getMaterialHref(
   return `/material/${material.id}?name=${nameParam}&icon=${iconParam}${detailParam}${returnToParam}`
 }
 
-function MaterialTable({ rows }: MaterialTableProps) {
+// Back links from a material page land on the same servant page tab.
+function useReturnTo(returnTab?: string) {
   const pathname = usePathname()
+  return returnTab ? `${pathname}#${returnTab}` : pathname
+}
 
+function MaterialTable({ rows, returnTo }: MaterialTableProps) {
   if (!rows.length) return null
 
   return (
@@ -259,7 +263,7 @@ function MaterialTable({ rows }: MaterialTableProps) {
               {row.materials.length ? (
                 <div className="flex flex-wrap gap-3">
                   {row.materials.map((material) => {
-                    const href = getMaterialHref(material, pathname)
+                    const href = getMaterialHref(material, returnTo)
 
                     if (!href) {
                       return (
@@ -315,17 +319,14 @@ function MaterialTable({ rows }: MaterialTableProps) {
   )
 }
 
-export function MaterialsSection({
+function getMaterialTabs({
   ascensionMaterials,
   skillMaterials,
   appendSkillMaterials,
   costumeMaterials,
-  skillMultiplier = 3,
-  appendSkillMultiplier = 3,
+  costumeNames,
 }: MaterialsSectionProps) {
-  const pathname = usePathname()
-
-  const tabs = [
+  return [
     {
       id: "ascension",
       label: "Ascension",
@@ -344,15 +345,49 @@ export function MaterialsSection({
     {
       id: "costume",
       label: "Costume",
-      rows: parseMaterialRows(costumeMaterials, getCostumeStageLabel),
+      rows: parseMaterialRows(costumeMaterials, getCostumeStageLabeler(costumeMaterials, costumeNames)),
     },
   ].filter((tab) => tab.rows.length > 0)
+}
 
+export function MaterialsSection(props: MaterialsSectionProps) {
+  const returnTo = useReturnTo(props.returnTab)
+  const tabs = getMaterialTabs(props)
   const [activeTabId, setActiveTabId] = useState(tabs[0]?.id ?? "ascension")
 
   if (!tabs.length) return null
 
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0]
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        {tabs.map((tab) => (
+          <Button
+            key={tab.id}
+            type="button"
+            size="sm"
+            variant={activeTab.id === tab.id ? "default" : "outline"}
+            onClick={() => setActiveTabId(tab.id)}
+          >
+            {tab.label}
+          </Button>
+        ))}
+      </div>
+      <MaterialTable rows={activeTab.rows} returnTo={returnTo} />
+    </div>
+  )
+}
+
+export function MaterialsSummarySection({
+  ascensionMaterials,
+  skillMaterials,
+  appendSkillMaterials,
+  skillMultiplier = 3,
+  appendSkillMultiplier = 3,
+  returnTab,
+}: MaterialsSectionProps) {
+  const returnTo = useReturnTo(returnTab)
   const ascensionTotals = addStageMapToTotals(createEmptyTotals(), ascensionMaterials, 1)
   const skillTotals = addStageMapToTotals(createEmptyTotals(), skillMaterials, skillMultiplier)
   const appendTotals = addStageMapToTotals(
@@ -371,107 +406,77 @@ export function MaterialsSection({
   ]
 
   return (
-    <div className="space-y-6">
-      <Card className="gap-4 py-4">
-        <CardHeader className="px-4">
-          <CardTitle className="text-lg">Materials</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 px-4">
-          <div className="flex flex-wrap gap-2">
-            {tabs.map((tab) => (
-              <Button
-                key={tab.id}
-                type="button"
-                size="sm"
-                variant={activeTab.id === tab.id ? "default" : "outline"}
-                onClick={() => setActiveTabId(tab.id)}
-              >
-                {tab.label}
-              </Button>
-            ))}
-          </div>
-          <MaterialTable rows={activeTab.rows} />
-        </CardContent>
-      </Card>
-      <Card className="gap-4 py-4">
-        <CardHeader className="px-4">
-          <CardTitle className="text-lg">Materials Summary</CardTitle>
-        </CardHeader>
-        <CardContent className="px-4">
-          <Table className="text-xs">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Category</TableHead>
-                <TableHead>Total Materials + QP</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {summaryRows.map((row) => {
-                const materials = toSortedMaterialArray(row.totals)
-                return (
-                  <TableRow key={row.label}>
-                    <TableCell className="font-medium">{row.label}</TableCell>
-                    <TableCell className="space-y-3">
-                      <p className="font-medium">QP: {row.totals.qp.toLocaleString()}</p>
-                      {materials.length ? (
-                        <div className="flex flex-wrap gap-3">
-                          {materials.map((material) => {
-                            const href = getMaterialHref(material, pathname)
+    <Table className="text-xs">
+      <TableHeader>
+        <TableRow>
+          <TableHead>Category</TableHead>
+          <TableHead>Total Materials + QP</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {summaryRows.map((row) => {
+          const materials = toSortedMaterialArray(row.totals)
+          return (
+            <TableRow key={row.label}>
+              <TableCell className="font-medium">{row.label}</TableCell>
+              <TableCell className="space-y-3">
+                <p className="font-medium">QP: {row.totals.qp.toLocaleString()}</p>
+                {materials.length ? (
+                  <div className="flex flex-wrap gap-3">
+                    {materials.map((material) => {
+                      const href = getMaterialHref(material, returnTo)
 
-                            if (!href) {
-                              return (
-                                <div
-                                  key={`${row.label}-${material.key}`}
-                                  className="inline-flex items-center gap-2 rounded-md border px-2 py-1"
-                                  title={`${material.name} x ${material.amount}`}
-                                >
-                                  <Image
-                                    src={material.icon}
-                                    alt={material.name}
-                                    width={54}
-                                    height={54}
-                                    className="rounded-sm"
-                                  />
-                                  <span>{material.amount.toLocaleString()}</span>
-                                </div>
-                              )
-                            }
+                      if (!href) {
+                        return (
+                          <div
+                            key={`${row.label}-${material.key}`}
+                            className="inline-flex items-center gap-2 rounded-md border px-2 py-1"
+                            title={`${material.name} x ${material.amount}`}
+                          >
+                            <Image
+                              src={material.icon}
+                              alt={material.name}
+                              width={54}
+                              height={54}
+                              className="rounded-sm"
+                            />
+                            <span>{material.amount.toLocaleString()}</span>
+                          </div>
+                        )
+                      }
 
-                            return (
-                              <Button
-                                key={`${row.label}-${material.key}`}
-                                asChild
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                className="h-auto gap-2 px-2 py-1"
-                                title={`${material.name} x ${material.amount}`}
-                              >
-                                <Link href={href}>
-                                  <Image
-                                    src={material.icon}
-                                    alt={material.name}
-                                    width={54}
-                                    height={54}
-                                    className="rounded-sm"
-                                  />
-                                  <span>{material.amount.toLocaleString()}</span>
-                                </Link>
-                              </Button>
-                            )
-                          })}
-                        </div>
-                      ) : (
-                        <span>—</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
+                      return (
+                        <Button
+                          key={`${row.label}-${material.key}`}
+                          asChild
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-auto gap-2 px-2 py-1"
+                          title={`${material.name} x ${material.amount}`}
+                        >
+                          <Link href={href}>
+                            <Image
+                              src={material.icon}
+                              alt={material.name}
+                              width={54}
+                              height={54}
+                              className="rounded-sm"
+                            />
+                            <span>{material.amount.toLocaleString()}</span>
+                          </Link>
+                        </Button>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <span>—</span>
+                )}
+              </TableCell>
+            </TableRow>
+          )
+        })}
+      </TableBody>
+    </Table>
   )
 }
