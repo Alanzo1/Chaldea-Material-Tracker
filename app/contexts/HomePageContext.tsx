@@ -1,84 +1,43 @@
 "use client"
 
-import { createContext, useContext, useMemo, useState } from "react"
+import { createContext, useContext, useState } from "react"
 
-const ServantContext = createContext<any>(null)
+import type { ServantIndexEntry } from "@/lib/atlas-types"
+import { EMPTY_FILTERS, type ServantFilters, type ServantSort } from "@/lib/servant-filters"
 
-export interface ServantFilters {
-  classes: string[]
-  buffs: string[]
-  debuffs: string[]
-  traits: string[]
-  alignments: string[]
-  stars: string[]
+// Browser state shared by the NavBar search and the home page servant browser.
+// Lives in the root layout, so it survives navigation between pages.
+interface ServantContextValue {
+  servants: ServantIndexEntry[]
+  filters: ServantFilters
+  setFilters: React.Dispatch<React.SetStateAction<ServantFilters>>
+  sort: ServantSort
+  setSort: React.Dispatch<React.SetStateAction<ServantSort>>
+  searchQuery: string
+  setSearchQuery: React.Dispatch<React.SetStateAction<string>>
 }
 
-const defaultFilters: ServantFilters = {
-  classes: [],
-  buffs: [],
-  debuffs: [],
-  traits: [],
-  alignments: [],
-  stars: [],
-}
-
-function matchesAny(values: string[] = [], selected: string[]) {
-  if (!selected.length) return true
-  const normalizedValues = values.map((value) => String(value).toLowerCase())
-  return selected.some((value) => normalizedValues.includes(String(value).toLowerCase()))
-}
+const ServantContext = createContext<ServantContextValue | null>(null)
 
 export function ServantProvider({
   children,
   initialServants = [],
 }: {
   children: React.ReactNode
-  initialServants?: any[]
+  initialServants?: ServantIndexEntry[]
 }) {
-  const [servants, setServants] = useState<any[]>(initialServants)
-  const [filters, setFilters] = useState<ServantFilters>(defaultFilters)
+  const [filters, setFilters] = useState<ServantFilters>(EMPTY_FILTERS)
+  const [sort, setSort] = useState<ServantSort>("default")
   const [searchQuery, setSearchQuery] = useState("")
-
-  const filtered = useMemo(
-    () =>
-      servants.filter((servant) => {
-        const query = searchQuery.trim().toLowerCase()
-        const searchMatch =
-          !query ||
-          String(servant.name ?? "").toLowerCase().includes(query) ||
-          String(servant.className ?? "").toLowerCase().includes(query)
-
-        const classMatch =
-          !filters.classes.length ||
-          filters.classes.includes(String(servant.className).toLowerCase())
-
-        const buffMatch = matchesAny(servant.buffs, filters.buffs)
-        const debuffMatch = matchesAny(servant.debuffs, filters.debuffs)
-        const traitMatch = matchesAny(servant.traits, filters.traits)
-        const alignmentMatch = matchesAny(servant.alignments, filters.alignments)
-        const starMatch = matchesAny([servant.stars], filters.stars)
-
-        return (
-          searchMatch &&
-          classMatch &&
-          buffMatch &&
-          debuffMatch &&
-          traitMatch &&
-          alignmentMatch &&
-          starMatch
-        )
-      }),
-    [filters, searchQuery, servants]
-  )
 
   return (
     <ServantContext.Provider
       value={{
-        servants,
-        setServants,
-        filtered,
+        servants: initialServants,
         filters,
         setFilters,
+        sort,
+        setSort,
         searchQuery,
         setSearchQuery,
       }}
@@ -89,5 +48,7 @@ export function ServantProvider({
 }
 
 export function useServants() {
-  return useContext(ServantContext)
+  const context = useContext(ServantContext)
+  if (!context) throw new Error("useServants must be used inside ServantProvider")
+  return context
 }
