@@ -1,27 +1,19 @@
 "use client"
 
 import { SlidersHorizontal } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 
 import { FilterSidebar } from "@/components/ServantBrowser/FilterSidebar"
 import { ServantGrid } from "@/components/ServantBrowser/ServantGrid"
-import { readFavoriteServantIds } from "@/lib/favorites"
-import { readTrackedMaterialsState } from "@/lib/material-tracker"
 import { countActiveFilters, filterServants, sortServants } from "@/lib/servant-filters"
+import { useCollectionIds } from "@/lib/use-collection-ids"
 import { cn } from "@/lib/utils"
 import { useServants } from "../contexts/HomePageContext"
 
 function Homepage() {
   const { servants, filters, setFilters, sort, setSort, searchQuery, setSearchQuery } = useServants()
-  const [favoriteIds, setFavoriteIds] = useState<number[]>([])
-  const [trackedIds, setTrackedIds] = useState<number[]>([])
+  const { favoriteIds, trackedIds } = useCollectionIds()
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
-
-  // localStorage-backed; read on mount so changes made on other pages show up on return.
-  useEffect(() => {
-    setFavoriteIds(readFavoriteServantIds())
-    setTrackedIds(readTrackedMaterialsState().servants.map((entry) => entry.servantId))
-  }, [])
 
   const visibleServants = useMemo(
     () =>

@@ -26,3 +26,29 @@ export interface MaterialIndexEntry {
   /** Rarity frame: "bronze" | "silver" | "gold" | … */
   background: string
 }
+
+export interface FarmingNode {
+  id: number
+  questName: string
+  apCost: number
+  dropRate: number
+  apPerDrop: number
+  warName?: string
+  locationName?: string
+  questTitle?: string
+}
+
+export interface ItemUsageEntry {
+  servantId: number
+  ascension: number
+  skill: number
+  append: number
+  costume: number
+  total: number
+}
+
+/** public/data/items/{id}.json */
+export interface ItemFile {
+  nodes: FarmingNode[]
+  usage: ItemUsageEntry[]
+}

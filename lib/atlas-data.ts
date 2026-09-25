@@ -16,6 +16,10 @@ export function getMaterialsIndex(): MaterialIndexEntry[] {
   return materialsIndex as MaterialIndexEntry[]
 }
 
+export function getMaterial(id: number): MaterialIndexEntry | undefined {
+  return getMaterialsIndex().find((material) => material.id === id)
+}
+
 // Only called at build time: servant pages are fully prerendered (dynamicParams = false).
 export async function getServantDetail(id: number) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
