@@ -41,11 +41,11 @@ export function MaterialDetail({ material }: { material: MaterialIndexEntry }) {
         </div>
       </header>
 
-      <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
-        <div className={cn("grid aspect-square place-items-center rounded-lg", itemBackgroundClass(material.background))}>
+      <div className="grid grid-cols-[6rem_1fr] gap-3 sm:grid-cols-[10rem_1fr]">
+        <div className={cn("grid aspect-square place-items-center self-start rounded-lg p-2", itemBackgroundClass(material.background))}>
           <Image src={material.icon} alt={material.name} width={112} height={112} priority className="object-contain" />
         </div>
-        <p className="rounded-lg bg-card/60 p-4 text-base leading-relaxed text-foreground/90">
+        <p className="rounded-lg bg-card/60 p-3 text-sm leading-relaxed text-foreground/90 sm:p-4 sm:text-base">
           {material.detail || "No description."}
         </p>
       </div>
