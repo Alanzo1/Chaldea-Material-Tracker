@@ -11,10 +11,16 @@ export async function fetchJson(url, { timeoutMs = DEFAULT_TIMEOUT_MS, retries =
         headers: { "User-Agent": USER_AGENT },
         signal: AbortSignal.timeout(timeoutMs),
       })
-      if (!response.ok) throw new Error(`Fetch failed (${response.status}): ${url}`)
+      if (!response.ok) {
+        const error = new Error(`Fetch failed (${response.status}): ${url}`)
+        error.status = response.status
+        throw error
+      }
       return await response.json()
     } catch (error) {
       lastError = error
+      // 4xx won't change on retry; only retry network errors, timeouts and 5xx.
+      if (error.status >= 400 && error.status < 500) break
       if (attempt < retries) {
         await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt))
       }
@@ -37,4 +43,27 @@ export async function mapWithConcurrency(items, limit, fn) {
 
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()))
   return results
+}
+
+// Concurrent first pass, then one sequential retry of each failure (Atlas is slow on cold cache).
+// Returns results in input order plus the indexes that failed both times.
+export async function mapWithRetryPass(items, limit, fn) {
+  const firstFailed = []
+  const results = await mapWithConcurrency(items, limit, (item, index) =>
+    fn(item, index).catch(() => {
+      firstFailed.push(index)
+      return undefined
+    })
+  )
+
+  const failed = []
+  for (const index of firstFailed.sort((a, b) => a - b)) {
+    try {
+      results[index] = await fn(items[index], index)
+    } catch {
+      failed.push(index)
+    }
+  }
+
+  return { results, failed }
 }

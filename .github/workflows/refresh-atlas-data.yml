@@ -23,8 +23,9 @@ jobs:
         with:
           node-version: 24
 
+      # Pipeline tests only: an app-code issue (scripts/guards) must not stop the data refresh.
       - name: Test pipeline
-        run: npm test
+        run: node --test "scripts/atlas/*.test.mjs"
 
       - name: Build static data
         run: npm run data:refresh

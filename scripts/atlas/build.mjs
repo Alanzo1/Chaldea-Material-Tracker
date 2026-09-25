@@ -2,7 +2,7 @@ import { join } from "node:path"
 
 import { readPreviousStats, validateDataset, writeDataset } from "./dataset.mjs"
 import { aggregateDrops, buildFarmingIndex, buildQuestMeta, selectQuestPhaseJobs } from "./farming.mjs"
-import { fetchJson, mapWithConcurrency } from "./fetch.mjs"
+import { fetchJson, mapWithRetryPass } from "./fetch.mjs"
 import { buildMaterialsIndex } from "./materials.mjs"
 import { buildServantsIndex, trimServantDetail } from "./servants.mjs"
 
@@ -23,17 +23,22 @@ async function run() {
 
   const jobs = selectQuestPhaseJobs(wars)
   console.log(`Fetching ${jobs.length} quest phases (concurrency ${QUEST_CONCURRENCY})...`)
-  let failed = 0
   let completed = 0
-  const questResults = await mapWithConcurrency(jobs, QUEST_CONCURRENCY, async (job) => {
-    const detail = await fetchJson(QUEST_PHASE_URL(job.questId, job.phase), { timeoutMs: 60000 }).catch(() => {
-      failed += 1
-      return null
+  const { results: questResults, failed: failedIndexes } = await mapWithRetryPass(jobs, QUEST_CONCURRENCY, async (job) => {
+    // A phase Atlas doesn't have (404) is a stable answer, not a failure: it just has no drops.
+    const detail = await fetchJson(QUEST_PHASE_URL(job.questId, job.phase), { timeoutMs: 60000 }).catch((error) => {
+      if (error.status === 404) return null
+      throw error
     })
     completed += 1
     if (completed % 200 === 0) console.log(`  ${completed}/${jobs.length}`)
     return { job, detail }
   })
+  for (const index of failedIndexes) {
+    const { questId, phase } = jobs[index]
+    console.error(`  failed after retry: quest ${questId} phase ${phase}`)
+  }
+  const failed = failedIndexes.length
 
   const servantsIndex = buildServantsIndex(servants)
   const indexedIds = new Set(servantsIndex.map((s) => s.id))
@@ -45,7 +50,7 @@ async function run() {
   )
   const materialsIndex = buildMaterialsIndex(items)
   const farming = buildFarmingIndex(
-    aggregateDrops(questResults),
+    aggregateDrops(questResults.filter(Boolean)),
     materialsIndex.map((m) => m.id),
     buildQuestMeta(wars)
   )

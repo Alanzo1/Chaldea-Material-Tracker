@@ -28,8 +28,9 @@ test("validateDataset accepts a healthy dataset", () => {
 
 const PREVIOUS = { servantCount: 400, materialCount: 200, farmedItemCount: 100 }
 
-test("validateDataset rejects too many quest-phase failures", () => {
-  const errors = validateDataset(dataset({ failed: 60 }), null)
+test("validateDataset rejects any quest-phase failure left after the retry pass", () => {
+  // A missing quest silently drops nodes and flips the committed output day to day.
+  const errors = validateDataset(dataset({ failed: 1 }), null)
   assert.equal(errors.length, 1)
   assert.match(errors[0], /quest phase/)
 })

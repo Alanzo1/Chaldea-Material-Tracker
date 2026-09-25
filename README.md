@@ -76,7 +76,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 - `npm run dev` – run local dev server
 - `npm run data:refresh` – fetch Atlas exports and regenerate `public/data/`
-- `npm test` – pipeline tests (`node --test`)
+- `npm test` – pipeline tests + guard that app code never calls the Atlas API (`node --test`)
 - `npm run build` – production build (`next build --webpack`), no Atlas calls
 - `npm run start` – run production server
 - `npm run lint` – lint

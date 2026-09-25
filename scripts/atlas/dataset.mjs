@@ -4,7 +4,6 @@ import { join } from "node:path"
 const MIN_SERVANTS = 300
 const MIN_MATERIALS = 100
 const MIN_FARMED_ITEMS = 50
-const MAX_QUEST_FAILURE_RATE = 0.05
 const MAX_DROP_VS_PREVIOUS = 0.05
 
 function countFarmedItems(farming) {
@@ -25,9 +24,8 @@ export function validateDataset(dataset, previous) {
   if (current.farmedItemCount < MIN_FARMED_ITEMS) {
     errors.push(`farmed item count ${current.farmedItemCount} < ${MIN_FARMED_ITEMS}`)
   }
-  if (total > 0 && failed / total > MAX_QUEST_FAILURE_RATE) {
-    errors.push(`quest phase fetch failures ${failed}/${total} exceed ${MAX_QUEST_FAILURE_RATE * 100}%`)
-  }
+  // Failures remaining after the retry pass would silently drop nodes and churn the committed output.
+  if (failed > 0) errors.push(`quest phase fetch failures ${failed}/${total} after retry pass`)
 
   // Fixed minimums miss partial outages (e.g. 600 → 60 farmed items), so also compare to the last run.
   const labels = { servantCount: "servant count", materialCount: "material count", farmedItemCount: "farmed item count" }
