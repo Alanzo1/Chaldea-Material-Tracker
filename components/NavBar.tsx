@@ -5,8 +5,7 @@ import { usePathname } from "next/navigation"
 import { Moon, Search, Settings, Sparkles, Sun } from "lucide-react"
 import { useEffect, useState } from "react"
 
-import { useServants } from "@/app/contexts/HomePageContext"
-import { Input } from "@/components/ui/input"
+import { ServantSearch } from "@/components/ServantSearch"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 
@@ -41,7 +40,7 @@ function NavLink({ href, label }: { href: string; label: string }) {
 }
 
 export function NavBar() {
-  const { searchQuery, setSearchQuery } = useServants()
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [theme, setTheme] = useState<ThemeMode>("dark")
 
   useEffect(() => {
@@ -83,18 +82,11 @@ export function NavBar() {
         </nav>
 
         <div className="ml-auto flex min-w-0 items-center gap-2">
-          <label className="relative hidden w-[min(22rem,32vw)] lg:block">
-            <span className="sr-only">Search servants</span>
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search servants..."
-              className="h-11 rounded-md pl-9"
-            />
-          </label>
+          <div className="hidden w-[min(22rem,32vw)] lg:block">
+            <ServantSearch />
+          </div>
 
-          <Popover>
+          <Popover open={mobileSearchOpen} onOpenChange={setMobileSearchOpen}>
             <PopoverTrigger asChild>
               <button
                 type="button"
@@ -105,17 +97,7 @@ export function NavBar() {
               </button>
             </PopoverTrigger>
             <PopoverContent align="end" sideOffset={8} className="w-[min(22rem,calc(100vw-2rem))] p-3">
-              <label className="relative block">
-                <span className="sr-only">Search servants</span>
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  autoFocus
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search servants..."
-                  className="h-11 pl-9"
-                />
-              </label>
+              <ServantSearch autoFocus inlineResults onNavigate={() => setMobileSearchOpen(false)} />
             </PopoverContent>
           </Popover>
 
