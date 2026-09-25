@@ -1,8 +1,8 @@
-import { getServantsHomePageIndex } from "@/app/services/api"
+import { getServantsIndex } from "@/lib/atlas-data"
 import { FavoriteServantsTablePage } from "@/components/ServantTable/FavoriteServantsTablePage"
 
-export default async function FavoritesPage() {
-  const servants = await getServantsHomePageIndex()
+export default function FavoritesPage() {
+  const servants = getServantsIndex()
 
   return <FavoriteServantsTablePage data={servants} />
 }
