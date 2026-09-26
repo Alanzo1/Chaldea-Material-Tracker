@@ -1,5 +1,4 @@
 const TRACKED_MATERIALS_STATE_KEY = "trackedMaterialsStateV1"
-const PERSIST_DEBOUNCE_MS = 120
 
 interface MaterialItemLike {
   amount?: number
@@ -42,6 +41,7 @@ export interface TrackedServantEntry {
 
 export interface TrackedMaterialsState {
   version: 1
+  qp?: number
   servants: TrackedServantEntry[]
   ownedByMaterialId: Record<string, number>
 }
@@ -59,37 +59,46 @@ export interface RequirementTotals {
 }
 
 let inMemoryState: TrackedMaterialsState | null = null
-let persistTimer: ReturnType<typeof setTimeout> | null = null
+type Listener = () => void
+const listeners = new Set<Listener>()
+let trackerScope = 0
+export function getTrackerScope() { return trackerScope }
+let persistence: ((state: TrackedMaterialsState) => void) | null = null
+
+export function subscribeTracker(listener: Listener) {
+  listeners.add(listener)
+  return () => { listeners.delete(listener) }
+}
+function notifyTracker() { listeners.forEach((listener) => listener()) }
 
 function readJson<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback
-  try {
-    const raw = window.localStorage.getItem(key)
-    if (!raw) return fallback
-    return JSON.parse(raw) as T
-  } catch {
-    return fallback
+  try { return JSON.parse(window.localStorage.getItem(key) ?? "null") ?? fallback } catch { return fallback }
+}
+function persistStateNow() {
+  if (!inMemoryState || typeof window === "undefined") return
+  if (persistence) persistence(inMemoryState)
+  else window.localStorage.setItem(TRACKED_MATERIALS_STATE_KEY, JSON.stringify(inMemoryState))
+}
+
+// Switch the active store without copying an account's progress into guest storage.
+export function activateTracker(state: TrackedMaterialsState, save: ((state: TrackedMaterialsState) => void) | null) {
+  trackerScope++
+  persistence = save
+  inMemoryState = state
+  notifyTracker()
+}
+export function readGuestProgress(): TrackedMaterialsState {
+  const raw = readJson<Partial<TrackedMaterialsState>>(TRACKED_MATERIALS_STATE_KEY, {})
+  return {
+    version: 1,
+    servants: Array.isArray(raw.servants) ? raw.servants.map(normalizeServantEntry).filter(Boolean) as TrackedServantEntry[] : [],
+    ownedByMaterialId: normalizeOwnedMap(raw.ownedByMaterialId),
+    qp: Math.max(0, toNumber(raw.qp ?? readJson("trackerCurrentQp", 0))),
   }
 }
-
-function writeJson<T>(key: string, value: T) {
-  if (typeof window === "undefined") return
-  window.localStorage.setItem(key, JSON.stringify(value))
-}
-
-function persistStateNow() {
-  if (typeof window === "undefined" || !inMemoryState) return
-  writeJson(TRACKED_MATERIALS_STATE_KEY, inMemoryState)
-}
-
-function schedulePersist() {
-  if (typeof window === "undefined") return
-  if (persistTimer) return
-
-  persistTimer = setTimeout(() => {
-    persistTimer = null
-    persistStateNow()
-  }, PERSIST_DEBOUNCE_MS)
+export function setCurrentQp(qp: number) {
+  writeTrackedMaterialsState({ ...readTrackedMaterialsState(), qp: Math.max(0, Math.floor(toNumber(qp))) })
 }
 
 function toNumber(value: unknown, fallback = 0) {
@@ -156,41 +165,17 @@ function normalizeOwnedMap(value: unknown) {
   return Object.fromEntries(entries)
 }
 
-function createDefaultState(): TrackedMaterialsState {
-  return {
-    version: 1,
-    servants: [],
-    ownedByMaterialId: {},
-  }
-}
-
 export function readTrackedMaterialsState() {
   if (inMemoryState) return inMemoryState
 
-  const rawState = readJson<unknown>(TRACKED_MATERIALS_STATE_KEY, createDefaultState())
-
-  if (!rawState || typeof rawState !== "object") {
-    inMemoryState = createDefaultState()
-    return inMemoryState
-  }
-
-  const record = rawState as Record<string, unknown>
-  const servants = Array.isArray(record.servants)
-    ? record.servants.map(normalizeServantEntry).filter(Boolean) as TrackedServantEntry[]
-    : []
-
-  inMemoryState = {
-    version: 1 as const,
-    servants: servants.sort((a, b) => a.servantName.localeCompare(b.servantName)),
-    ownedByMaterialId: normalizeOwnedMap(record.ownedByMaterialId),
-  }
-
+  inMemoryState = readGuestProgress()
   return inMemoryState
 }
 
 export function writeTrackedMaterialsState(state: TrackedMaterialsState) {
-  inMemoryState = state
-  schedulePersist()
+  inMemoryState = { ...state, qp: state.qp ?? readTrackedMaterialsState().qp ?? 0 }
+  persistStateNow()
+  notifyTracker()
 }
 
 export function upsertTrackedServant(entry: TrackedServantEntry) {
@@ -453,11 +438,7 @@ export function importTrackedMaterialsState(payload: string) {
       : [],
     ownedByMaterialId: normalizeOwnedMap(parsed?.ownedByMaterialId),
   }
-  inMemoryState = nextState
-  if (persistTimer) {
-    clearTimeout(persistTimer)
-    persistTimer = null
-  }
-  persistStateNow()
+  nextState.qp = Math.max(0, toNumber(parsed.qp, readTrackedMaterialsState().qp ?? 0))
+  writeTrackedMaterialsState(nextState)
   return nextState
 }

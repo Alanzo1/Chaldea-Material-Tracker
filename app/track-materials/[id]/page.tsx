@@ -10,6 +10,8 @@ import {
   calculateServantRequirements,
   type RequirementTotals,
   readTrackedMaterialsState,
+  subscribeTracker,
+  setCurrentQp,
   setOwnedMaterialQuantity,
   updateTrackedServantLevels,
   writeTrackedMaterialsState,
@@ -51,7 +53,6 @@ interface UpgradeUndoSnapshot {
 }
 
 const NUMBER_FORMATTER = new Intl.NumberFormat("en-US")
-const TRACKER_CURRENT_QP_KEY = "trackerCurrentQp"
 const EMPTY_TOTALS: RequirementTotals = {
   qp: 0,
   requiredMaterials: [],
@@ -277,15 +278,6 @@ function getAscensionUpgradeHelperText(status: SkillUpgradeStatus) {
   }
 
   return status.reason
-}
-
-function writeCurrentQpToStorage(value: number) {
-  if (typeof window === "undefined") return
-  try {
-    window.localStorage.setItem(TRACKER_CURRENT_QP_KEY, String(Math.max(0, Math.floor(value))))
-  } catch {
-    // no-op
-  }
 }
 
 function cloneTrackedState(state: TrackedMaterialsState) {
@@ -569,13 +561,13 @@ export default function TrackedServantDetailPage() {
   const [lastUpgradeUndoSnapshot, setLastUpgradeUndoSnapshot] = useState<UpgradeUndoSnapshot | null>(null)
 
   useEffect(() => {
-    setState(readTrackedMaterialsState())
-    try {
-      const rawQp = window.localStorage.getItem(TRACKER_CURRENT_QP_KEY)
-      setCurrentQpInput(String(toWholeNumber(rawQp, 0)))
-    } catch {
-      setCurrentQpInput("0")
+    const update = () => {
+      const state = readTrackedMaterialsState()
+      setState(state)
+      setCurrentQpInput(String(state.qp ?? 0))
     }
+    update()
+    return subscribeTracker(update)
   }, [])
   useEffect(() => { setActiveSkillTab(0); setActiveAppendSkillTab(0) }, [servantId])
 
@@ -707,13 +699,13 @@ export default function TrackedServantDetailPage() {
     setLastUpgradeUndoSnapshot(null)
     if (value === "") {
       setCurrentQpInput("")
-      writeCurrentQpToStorage(0)
+      setCurrentQp(0)
       return
     }
 
     const safeValue = toWholeNumber(value, 0)
     setCurrentQpInput(String(safeValue))
-    writeCurrentQpToStorage(safeValue)
+    setCurrentQp(safeValue)
   }
 
   const handleUpgradeSkill = (skillIndex: number) => {
@@ -767,8 +759,8 @@ export default function TrackedServantDetailPage() {
       state: cloneTrackedState(latestState),
       qp: currentQpValue,
     })
+    nextState.qp = nextQp
     writeTrackedMaterialsState(nextState)
-    writeCurrentQpToStorage(nextQp)
     setCurrentQpInput(String(nextQp))
     setState(nextState)
   }
@@ -822,8 +814,8 @@ export default function TrackedServantDetailPage() {
       state: cloneTrackedState(latestState),
       qp: currentQpValue,
     })
+    nextState.qp = nextQp
     writeTrackedMaterialsState(nextState)
-    writeCurrentQpToStorage(nextQp)
     setCurrentQpInput(String(nextQp))
     setState(nextState)
   }
@@ -879,16 +871,15 @@ export default function TrackedServantDetailPage() {
       state: cloneTrackedState(latestState),
       qp: currentQpValue,
     })
+    nextState.qp = nextQp
     writeTrackedMaterialsState(nextState)
-    writeCurrentQpToStorage(nextQp)
     setCurrentQpInput(String(nextQp))
     setState(nextState)
   }
 
   const handleUndoLastUpgrade = () => {
     if (!lastUpgradeUndoSnapshot) return
-    writeTrackedMaterialsState(lastUpgradeUndoSnapshot.state)
-    writeCurrentQpToStorage(lastUpgradeUndoSnapshot.qp)
+    writeTrackedMaterialsState({ ...lastUpgradeUndoSnapshot.state, qp: lastUpgradeUndoSnapshot.qp })
     setCurrentQpInput(String(lastUpgradeUndoSnapshot.qp))
     setState(lastUpgradeUndoSnapshot.state)
     setLastUpgradeUndoSnapshot(null)
