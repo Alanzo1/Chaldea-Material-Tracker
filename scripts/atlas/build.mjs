@@ -1,4 +1,4 @@
-import { join } from "node:path"
+import { createRegionConfig } from "./region.mjs"
 
 import { readPreviousStats, validateDataset, writeDataset } from "./dataset.mjs"
 import { aggregateDrops, buildFarmingIndex, buildQuestMeta, selectQuestPhaseJobs } from "./farming.mjs"
@@ -8,15 +8,11 @@ import { buildServantsIndex, trimServantDetail } from "./servants.mjs"
 import { buildItemFiles, buildItemUsage } from "./usage.mjs"
 import { buildFreeQuestData, selectFreeQuestJobs } from "./quests.mjs"
 
-const REGION = "NA"
-const BASE_URL = "https://api.atlasacademy.io"
-const EXPORT_URL = (name) => `${BASE_URL}/export/${REGION}/${name}.json`
-const QUEST_PHASE_URL = (questId, phase) => `${BASE_URL}/nice/${REGION}/quest/${questId}/${phase}`
 const QUEST_CONCURRENCY = 8
-const OUT_DIR = join(process.cwd(), "public", "data")
 
 async function run() {
-  console.log("Fetching exports...")
+  const { region, outDir: OUT_DIR, exportUrl: EXPORT_URL, questPhaseUrl: QUEST_PHASE_URL, basicServantUrl } = createRegionConfig(process.argv.slice(2))
+  console.log(`Fetching ${region} exports...`)
   const [servants, items, wars] = await Promise.all([
     // The lore export is nice_servant plus profile data, which holds costume names.
     fetchJson(EXPORT_URL("nice_servant_lore"), { timeoutMs: 180000 }),
@@ -51,7 +47,7 @@ async function run() {
     (detail?.drops ?? []).filter((drop) => drop.type === "servant").map((drop) => drop.objectId)
   ))].sort((a, b) => a - b)
   const dropServants = await mapWithRetryPass(dropServantIds, QUEST_CONCURRENCY, (id) =>
-    fetchJson(`${BASE_URL}/basic/${REGION}/servant/${id}`)
+    fetchJson(basicServantUrl(id))
   )
   if (dropServants.failed.length) throw new Error("Drop servant metadata fetch failed; existing data kept")
   const dropItems = [...items, ...dropServants.results.map((svt) => ({
