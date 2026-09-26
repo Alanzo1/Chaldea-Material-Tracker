@@ -1,6 +1,6 @@
 "use client"
 
-import Link from "next/link"
+import { RegionLink as Link } from "@/components/RegionLink"
 import { Map as MapIcon, Search, SlidersHorizontal } from "lucide-react"
 import { useMemo, useState } from "react"
 import type { FreeQuestPhase } from "@/lib/atlas-types"

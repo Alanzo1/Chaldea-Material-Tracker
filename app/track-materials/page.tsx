@@ -1,7 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import Link from "next/link"
+import { RegionLink as Link } from "@/components/RegionLink"
 import Image from "next/image"
 import type { ReactNode } from "react"
 import { useEffect, useMemo, useState } from "react"
@@ -13,6 +13,7 @@ import { LoadingState } from "@/components/ui/spinner"
 import * as materialTracker from "@/lib/material-tracker"
 import type { RequirementTotals, TrackedMaterialsState } from "@/lib/material-tracker"
 import { computeTrackerStateInWorker } from "@/lib/material-tracker-worker-client"
+import { useDataRegion } from "@/lib/data-region"
 import { cn } from "@/lib/utils"
 
 interface ServantIndexItem {
@@ -204,6 +205,7 @@ function Modal({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function TrackMaterialsPage() {
+  const { base } = useDataRegion()
   const [currentQpInput, setCurrentQpInput] = useState("0")
   const [activeTab, setActiveTab] = useState<"tracker" | "materials" | "farming">("tracker")
   const [trackerState, setTrackerState] = useState<TrackedMaterialsState>({
@@ -228,12 +230,12 @@ export default function TrackMaterialsPage() {
 
   useEffect(() => {
     setTrackerState(materialTracker.readTrackedMaterialsState())
-    fetch("/data/servants-index.json", { cache: "force-cache" })
+    fetch(`${base}/servants-index.json`, { cache: "force-cache" })
       .then((r) => r.json())
       .then((p) => setServantIndex(Array.isArray(p) ? p : []))
       .catch(() => setServantIndex([]))
       .finally(() => setServantIndexLoaded(true))
-    fetch("/data/materials-index.json", { cache: "force-cache" })
+    fetch(`${base}/materials-index.json`, { cache: "force-cache" })
       .then((r) => r.json())
       .then((p) => setMaterialIndex(Array.isArray(p) ? p : []))
       .catch(() => setMaterialIndex([]))
@@ -245,7 +247,7 @@ export default function TrackMaterialsPage() {
     }
     update()
     return materialTracker.subscribeTracker(update)
-  }, [])
+  }, [base])
 
   const trackedServantIds = useMemo(() => new Set(trackerState.servants.map((e) => e.servantId)), [trackerState.servants])
 
@@ -315,7 +317,7 @@ export default function TrackMaterialsPage() {
       FARMING_REQUEST_CONCURRENCY,
       async (material) => {
         try {
-          const r = await fetch(`/data/items/${material.id}.json`, { cache: "force-cache" })
+          const r = await fetch(`${base}/items/${material.id}.json`, { cache: "force-cache" })
           const p = await r.json()
           const node = Array.isArray(p?.nodes) ? p.nodes[0] : null
           return [material.id, Number(node?.apPerDrop ?? Infinity)] as const
@@ -325,7 +327,7 @@ export default function TrackMaterialsPage() {
       }
     ).then((entries) => { if (!cancelled) setEfficiencyByMaterialId(Object.fromEntries(entries)) })
     return () => { cancelled = true }
-  }, [activeTab, incompleteMaterials])
+  }, [activeTab, incompleteMaterials, base])
 
   const farmingSortedMaterials = useMemo(() => {
     return [...incompleteMaterials].sort((a, b) => {
@@ -339,7 +341,7 @@ export default function TrackMaterialsPage() {
     const scope = materialTracker.getTrackerScope()
     setAddingServantId(servant.id)
     try {
-      const r = await fetch(`/data/servants/${servant.id}.json`, { cache: "force-cache" })
+      const r = await fetch(`${base}/servants/${servant.id}.json`, { cache: "force-cache" })
       if (!r.ok) throw new Error("Failed to load servant")
       const payload = await r.json()
       if (scope !== materialTracker.getTrackerScope()) return

@@ -4,21 +4,35 @@ import { readPreviousStats, validateDataset, writeDataset } from "./dataset.mjs"
 import { aggregateDrops, buildFarmingIndex, buildQuestMeta, selectQuestPhaseJobs } from "./farming.mjs"
 import { fetchJson, mapWithRetryPass } from "./fetch.mjs"
 import { buildMaterialsIndex } from "./materials.mjs"
-import { buildServantsIndex, trimServantDetail } from "./servants.mjs"
+import { buildEffectNameMaps, buildServantsIndex, trimServantDetail } from "./servants.mjs"
 import { buildItemFiles, buildItemUsage } from "./usage.mjs"
 import { buildFreeQuestData, selectFreeQuestJobs } from "./quests.mjs"
 
 const QUEST_CONCURRENCY = 8
 
+// Only wars with quests the pipeline reads (free quests and farming phases) are re-fetched.
+async function fetchTranslatedWars(wars, warUrl) {
+  const questIds = new Set([...selectFreeQuestJobs(wars), ...selectQuestPhaseJobs(wars)].map((job) => job.questId))
+  const ids = wars
+    .filter((war) => (war.spots ?? []).some((spot) => (spot.quests ?? []).some((quest) => questIds.has(quest.id))))
+    .map((war) => war.id)
+  console.log(`Fetching ${ids.length} translated wars...`)
+  const { results, failed } = await mapWithRetryPass(ids, QUEST_CONCURRENCY, (id) => fetchJson(warUrl(id), { timeoutMs: 60000 }))
+  if (failed.length) throw new Error("Translated war fetch failed; existing data kept")
+  const translated = new Map(results.map((war) => [war.id, war]))
+  return wars.map((war) => translated.get(war.id) ?? war)
+}
+
 async function run() {
-  const { region, outDir: OUT_DIR, exportUrl: EXPORT_URL, questPhaseUrl: QUEST_PHASE_URL, basicServantUrl } = createRegionConfig(process.argv.slice(2))
+  const { region, outDir: OUT_DIR, exportUrl: EXPORT_URL, questPhaseUrl: QUEST_PHASE_URL, basicServantUrl, warUrl, translateWars, effectNamesUrl } = createRegionConfig(process.argv.slice(2))
   console.log(`Fetching ${region} exports...`)
-  const [servants, items, wars] = await Promise.all([
+  const [servants, items, exportedWars] = await Promise.all([
     // The lore export is nice_servant plus profile data, which holds costume names.
     fetchJson(EXPORT_URL("nice_servant_lore"), { timeoutMs: 180000 }),
     fetchJson(EXPORT_URL("nice_item"), { timeoutMs: 60000 }),
     fetchJson(EXPORT_URL("nice_war"), { timeoutMs: 120000 }),
   ])
+  const wars = translateWars ? await fetchTranslatedWars(exportedWars, warUrl) : exportedWars
 
   const freeQuestJobs = selectFreeQuestJobs(wars)
   const jobs = [...new Map([...freeQuestJobs, ...selectQuestPhaseJobs(wars)].map((job) => [
@@ -54,7 +68,8 @@ async function run() {
     id: svt.id, name: `${svt.name} (${svt.className})`, icon: svt.face,
   }))]
 
-  const servantsIndex = buildServantsIndex(servants)
+  const effectNames = effectNamesUrl ? buildEffectNameMaps(await fetchJson(effectNamesUrl, { timeoutMs: 180000 })) : undefined
+  const servantsIndex = buildServantsIndex(servants, effectNames)
   const indexedIds = new Set(servantsIndex.map((s) => s.id))
   const servantDetails = new Map(
     servants

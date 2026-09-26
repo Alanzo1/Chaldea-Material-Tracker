@@ -1,3 +1,4 @@
+import { originalName } from "./names.mjs"
 // Keep phases separate: first-clear battles can differ from the repeatable phase.
 export function selectFreeQuestJobs(wars) {
   const jobs = new Map()
@@ -11,12 +12,14 @@ export function selectFreeQuestJobs(wars) {
             questId: quest.id,
             phase,
             name: quest.name,
+            ...originalName(quest),
             repeatable: quest.afterClear === "repeatLast" && phase === Math.max(...quest.phases),
             banner: war.banner || null,
             warId: war.id,
             warName: war.longName || war.name,
             spotId: spot.id,
             spotName: spot.name,
+            ...originalName(spot, "spotOriginalName"),
             // Unique isometric icon for this location on the in-game quest map (256×256 PNG).
             spotImage: spot.image || null,
             apCost: ["ap", "apAndItem"].includes(quest.consumeType) ? quest.consume : null,

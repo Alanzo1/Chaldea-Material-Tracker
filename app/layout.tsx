@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { ServantProvider } from "@/app/contexts/HomePageContext"
 import { ItemSearchProvider } from "@/app/contexts/ItemSearchContext"
 import { NavBar } from "@/components/NavBar"
+import { DataRegionProvider } from "@/lib/data-region"
 
 export default function RootLayout({
   children,
@@ -25,12 +26,14 @@ export default function RootLayout({
             `,
           }}
         />
+        <DataRegionProvider>
         <AccountProvider>
         <ServantProvider>
           <NavBar />
           <ItemSearchProvider>{children}</ItemSearchProvider>
         </ServantProvider>
         </AccountProvider>
+        </DataRegionProvider>
         <Analytics />
       </body>
     </html>

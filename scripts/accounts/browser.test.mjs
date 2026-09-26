@@ -45,7 +45,7 @@ await page.reload()
 await page.locator('[aria-busy=false]').waitFor()
 await page.waitForFunction(()=>document.querySelector('input[id^=owned-]')?.value==='7')
 await page.getByRole('button',{name:/^Profile:/}).click()
-await page.getByRole('list',{name:'Profiles'}).getByRole('button',{name:'Main',exact:true}).click()
+await page.getByRole('list',{name:'Profiles'}).getByRole('button',{name:'Main NA',exact:true}).click()
 await page.waitForFunction(()=>document.querySelector('input[id^=owned-]')?.value==='99')
 assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('chaldea:guest-profiles')).profiles.map(p=>p.name)),['Main','JP alt'])
 await page.goto(`${base}/account?error=sign-in`)
@@ -72,7 +72,7 @@ const token = [Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('ba
 const session={access_token:token,refresh_token:'test-refresh',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user}
 const cookie='base64-'+Buffer.from(JSON.stringify(session)).toString('base64url')
 // In-memory stand-in for the profile RPCs, with the same error codes as the migration.
-const cloud={settings:{display_name:'Cloud Master',theme:'dark'},profiles:[{id:'main-id',name:'Main',revision:1,document:{version:1,qp:400,servants:[],ownedByMaterialId:{'6505':4}}}]}
+const cloud={settings:{display_name:'Cloud Master',theme:'dark'},profiles:[{id:'main-id',name:'Main',server:'NA',revision:1,document:{version:1,qp:400,servants:[],ownedByMaterialId:{'6505':4}}}]}
 let writes=0, offline=false, nextId=1
 const fail=(code,message)=>({status:400,json:{code,message,details:null,hint:null}})
 const byId=pid=>cloud.profiles.find(p=>p.id===pid)
@@ -87,9 +87,9 @@ await page.route(`${supabaseUrl}/**`,async route=>{
   const name=body.profile_name.trim()
   if(cloud.profiles.length>=10) return route.fulfill(fail('P0001','Profile limit reached'))
   if(cloud.profiles.some(p=>p.name.toLowerCase()===name.toLowerCase())) return route.fulfill(fail('23505','duplicate key'))
-  const row={id:`p${nextId++}`,name,revision:1,document:body.progress_document}
+  const row={id:`p${nextId++}`,name,server:body.profile_server ?? 'NA',revision:1,document:body.progress_document}
   cloud.profiles.push(row)
-  return route.fulfill({json:{id:row.id,name:row.name,revision:1}})
+  return route.fulfill({json:{id:row.id,name:row.name,revision:1,server:row.server}})
  }
  if(rpc==='save_progress_profile') {
   writes++
@@ -98,6 +98,11 @@ await page.route(`${supabaseUrl}/**`,async route=>{
   if(row.revision!==body.expected_revision) return route.fulfill(fail('40001','Save conflict'))
   row.document=body.progress_document; row.revision++
   return route.fulfill({json:row.revision})
+ }
+ if(rpc==='set_progress_profile_server') {
+  const row=byId(body.profile_id)
+  if(!row) return route.fulfill(fail('P0002','Profile not found'))
+  row.server=body.profile_server; return route.fulfill({status:204})
  }
  if(rpc==='rename_progress_profile') {
   const row=byId(body.profile_id)
@@ -123,7 +128,8 @@ await page.addInitScript(({cookie,cookieName})=>{
 const owned=()=>page.getByLabel('Quantity owned').inputValue()
 const settled=()=>page.getByRole('status').filter({hasText:/^Saved$/}).first().waitFor()
 const profileMenu=()=>page.getByRole('button',{name:/^Profile:/})
-const pick=async name=>{ await profileMenu().click(); await page.getByRole('list',{name:'Profiles'}).getByRole('button',{name,exact:true}).click() }
+// Menu entries read "<name> <server>", e.g. "Main NA".
+const pick=async name=>{ await profileMenu().click(); await page.getByRole('list',{name:'Profiles'}).getByRole('button',{name:new RegExp(`^${name.replace(/[()]/g,'\\$&')} (NA|JP)$`)}).click() }
 
 // Sign-in import is offered, and declining leaves the cloud untouched.
 await page.goto(`${base}/account`)
@@ -181,12 +187,28 @@ await page.locator('[aria-busy=false]').waitFor()
 await page.getByRole('button',{name:'Rename JP alt'}).click()
 await page.getByLabel('Rename JP alt').fill('JP')
 await page.getByRole('button',{name:'Save',exact:true}).click()
-await page.getByText('JP',{exact:true}).waitFor()
+await page.getByRole('button',{name:'Rename JP',exact:true}).waitFor()
 assert.equal(jp.name,'JP')
 await page.getByRole('button',{name:'Delete Main (device)'}).click()
 await page.getByRole('button',{name:'Delete profile'}).click()
 await page.getByRole('button',{name:'Delete Main (device)'}).waitFor({state:'detached'})
 assert.deepEqual(cloud.profiles.map(p=>p.name),['Main','JP'])
+
+// Signed-in JP profile: created with its server, and the server can be changed from Account.
+await profileMenu().click()
+const menu=page.getByRole('dialog')
+await menu.getByRole('button',{name:'New profile'}).click()
+await menu.getByLabel('New profile name').fill('JP acct')
+await menu.getByRole('radiogroup',{name:'New profile server'}).getByRole('radio',{name:'JP'}).click()
+await menu.getByRole('button',{name:'Add',exact:true}).click()
+await page.waitForFunction(()=>document.querySelector('button[aria-label^="Profile:"]')?.getAttribute('aria-label')==='Profile: JP acct')
+assert.equal(cloud.profiles.find(p=>p.name==='JP acct').server,'JP')
+await page.getByRole('radiogroup',{name:'JP acct server'}).getByRole('radio',{name:'NA'}).click()
+await page.waitForTimeout(800)
+assert.equal(cloud.profiles.find(p=>p.name==='JP acct').server,'NA')
+await page.getByRole('button',{name:'Delete JP acct'}).click()
+await page.getByRole('button',{name:'Delete profile'}).click()
+await page.getByRole('button',{name:'Delete JP acct'}).waitFor({state:'detached'})
 
 // Offline edits stay in that profile's device copy until synced.
 await pick('JP')
@@ -228,6 +250,58 @@ await page.getByRole('button',{name:'Continue with Google'}).waitFor()
 assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('trackedMaterialsStateV1')).ownedByMaterialId['6505']),99)
 assert.deepEqual(errors,[])
 console.log('PASS mocked authenticated game profiles')
+} finally { await browser.close() }
+})
+
+test('JP mode: region switch, JP pages, JP profile planning and gating', async () => {
+const browser = await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL || undefined,headless:true})
+try {
+const page = await (await browser.newContext({viewport:{width:1280,height:900}})).newPage()
+const errors=[]
+page.on('pageerror',e=>errors.push(e.message))
+const h1=()=>page.locator('h1:visible').first().innerText()
+const region=name=>page.getByRole('group',{name:'Game region'}).getByRole('button',{name,exact:true})
+
+// Same page in the other region, with the Japanese name under the English one.
+await page.goto(`${base}/servantpage/100100`)
+await page.locator('[aria-busy=false]').waitFor()
+await region('JP').click()
+await page.waitForURL('**/jp/servants/100100')
+assert.equal(await h1(),'Altria Pendragon')
+await page.getByText('アルトリア・ペンドラゴン').waitFor()
+assert.equal(await page.getByRole('navigation',{name:'Primary navigation'}).getByRole('link',{name:'Items'}).getAttribute('href'),'/jp/items')
+
+// A JP-only servant falls back to the NA list.
+await page.goto(`${base}/jp/servants/4000100`)
+await page.getByRole('heading',{name:'U-Olga Marie'}).waitFor()
+await region('NA').click()
+await page.waitForURL(/\/servants$/)
+
+// Adding a JP servant with the NA "Main" profile asks for a JP profile first.
+await page.goto(`${base}/jp/servants/4000100`)
+await page.getByRole('heading',{name:'U-Olga Marie'}).waitFor()
+await page.getByRole('button',{name:'Add',exact:true}).click()
+await page.getByText('“Main” is an NA profile.').waitFor()
+await page.getByRole('button',{name:'Create a JP profile'}).click()
+await page.getByRole('button',{name:'Add to Planning'}).click()
+assert.equal(await page.getByRole('button',{name:/^Profile:/}).getAttribute('aria-label'),'Profile: JP')
+
+// JP Planning shows the JP profile; NA on Planning switches back to Main and NA Planning.
+await page.goto(`${base}/jp/track-materials`)
+await page.getByText('1 servant tracked').waitFor()
+await region('NA').click()
+await page.waitForURL(/\/track-materials$/)
+await page.getByText('No servants tracked yet').waitFor()
+// Opening JP Planning with an NA profile active returns to NA Planning.
+await page.goto(`${base}/jp/track-materials`)
+await page.waitForURL(/localhost:\d+\/track-materials$/)
+
+// A JP profile tracking a JP-only servant can't move to NA.
+await page.goto(`${base}/account`)
+await page.getByRole('radiogroup',{name:'JP server'}).getByRole('radio',{name:'NA'}).click()
+await page.getByRole('alert').filter({hasText:"NA doesn't have U-Olga Marie yet"}).waitFor()
+assert.deepEqual(errors,[])
+console.log('PASS JP mode: switch, JP pages, JP profile planning, gating')
 } finally { await browser.close() }
 })
 

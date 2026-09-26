@@ -10,13 +10,19 @@ export function createRegionConfig(args = [], cwd = process.cwd()) {
     }
     region = args[1]
   }
+  const jp = region === "JP"
+  const lang = jp ? "?lang=en" : ""
   return {
     region,
-    // Separate directories: replacing NA output must never remove JP output. JP stays outside
-    // public/ until the site uses it, so it isn't shipped with every deployment.
-    outDir: region === "NA" ? join(cwd, "public", "data") : join(cwd, "data", "jp"),
-    exportUrl: (name) => `${BASE_URL}/export/${region}/${name}.json`,
-    questPhaseUrl: (id, phase) => `${BASE_URL}/nice/${region}/quest/${id}/${phase}`,
-    basicServantUrl: (id) => `${BASE_URL}/basic/${region}/servant/${id}`,
+    // Separate directories: replacing NA output must never remove JP output.
+    outDir: join(cwd, "public", region === "NA" ? "data" : "data-jp"),
+    // JP names come from Atlas's English exports; the Japanese name stays in `originalName`.
+    exportUrl: (name) => `${BASE_URL}/export/${region}/${name}${jp ? "_lang_en" : ""}.json`,
+    questPhaseUrl: (id, phase) => `${BASE_URL}/nice/${region}/quest/${id}/${phase}${lang}`,
+    basicServantUrl: (id) => `${BASE_URL}/basic/${region}/servant/${id}${lang}`,
+    warUrl: (id) => `${BASE_URL}/nice/${region}/war/${id}${lang}`,
+    // Atlas's war export isn't translated; JP re-fetches the wars it uses from the translated endpoint.
+    translateWars: jp,
+    effectNamesUrl: jp ? `${BASE_URL}/export/NA/nice_servant.json` : null,
   }
 }

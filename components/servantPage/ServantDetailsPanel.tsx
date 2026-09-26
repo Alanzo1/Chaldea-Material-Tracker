@@ -1,4 +1,4 @@
-import Link from "next/link"
+import { RegionLink as Link } from "@/components/RegionLink"
 import { Globe, Heart, Layers, Swords } from "lucide-react"
 import type { ReactNode } from "react"
 

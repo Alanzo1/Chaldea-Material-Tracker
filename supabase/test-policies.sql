@@ -115,8 +115,46 @@ begin
   exception when insufficient_privilege then null; end;
 end $$;
 
+-- Game servers (NA / JP) per profile.
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000001', true);
+do $$
+declare
+  created jsonb;
+  saved jsonb;
+begin
+  -- Existing profiles default to NA; the old two-argument create still makes NA profiles.
+  if (public.read_progress_profiles()->'profiles'->0->>'server') <> 'NA' then raise exception 'Existing profile is not NA'; end if;
+  if (public.create_progress_profile('Old client', '{"version":1,"qp":0,"servants":[],"ownedByMaterialId":{}}')->>'server') <> 'NA'
+  then raise exception 'Two-argument create is not NA'; end if;
+  created := public.create_progress_profile('JP', '{"version":1,"qp":0,"servants":[],"ownedByMaterialId":{}}', 'JP');
+  if created->>'server' <> 'JP' then raise exception 'Create did not keep JP'; end if;
+  begin
+    perform public.create_progress_profile('CN', '{"version":1,"qp":0,"servants":[],"ownedByMaterialId":{}}', 'CN');
+    raise exception 'Unknown server accepted' using errcode = 'P0003';
+  exception when invalid_parameter_value then null; end;
+  perform public.set_progress_profile_server((created->>'id')::uuid, 'NA');
+  saved := (select p from jsonb_array_elements(public.read_progress_profiles()->'profiles') p where p->>'id' = created->>'id');
+  if saved->>'server' <> 'NA' then raise exception 'Server change not saved'; end if;
+  begin
+    perform public.set_progress_profile_server((created->>'id')::uuid, 'jp');
+    raise exception 'Lower-case server accepted' using errcode = 'P0003';
+  exception when invalid_parameter_value then null; end;
+  -- Another user's profile looks missing.
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000002', true);
+  begin
+    perform public.set_progress_profile_server((created->>'id')::uuid, 'JP');
+    raise exception 'Changed another user''s profile server' using errcode = 'P0003';
+  exception when no_data_found then null; end;
+end $$;
+
 reset role;
 set local role anon;
+do $$ begin
+  begin
+    perform public.set_progress_profile_server('00000000-0000-0000-0000-000000000009', 'JP');
+    raise exception 'Anonymous server change permitted' using errcode = 'P0003';
+  exception when insufficient_privilege then null; end;
+end $$;
 do $$ begin
   begin
     perform * from public.progress_profiles;

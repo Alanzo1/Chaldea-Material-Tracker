@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import Link from "next/link"
+import { RegionLink as Link } from "@/components/RegionLink"
 import { Search } from "lucide-react"
 
 import { useItemSearch } from "@/app/contexts/ItemSearchContext"

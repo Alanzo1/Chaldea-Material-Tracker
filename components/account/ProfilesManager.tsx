@@ -4,6 +4,9 @@ import { Check, Pencil, Plus, Trash2, Users, X } from "lucide-react"
 import { useState, type FormEvent } from "react"
 
 import { useAccount } from "@/components/account/AccountProvider"
+import { ServerPicker } from "@/components/account/ServerTag"
+import { useDataRegion } from "@/lib/data-region"
+import type { Region } from "@/lib/region"
 import { readTrackedMaterialsState } from "@/lib/material-tracker"
 import { describeProfileError, MAX_PROFILE_NAME, MAX_PROFILES } from "@/lib/profiles"
 import { cn } from "@/lib/utils"
@@ -20,6 +23,8 @@ export function ProfilesManager() {
   const [name, setName] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
+  const { region } = useDataRegion()
+  const [server, setServer] = useState<Region>(region)
 
   const close = () => { setEditing(null); setName(""); setError("") }
   const run = async (action: () => Promise<void>) => {
@@ -37,7 +42,7 @@ export function ProfilesManager() {
   const submit = (event: FormEvent) => {
     event.preventDefault()
     if (editing?.kind === "rename") void run(() => account.renameProfile(editing.id, name))
-    if (editing?.kind === "create") void run(() => account.createProfile(name))
+    if (editing?.kind === "create") void run(() => account.createProfile(name, server))
   }
 
   const onlyOne = account.profiles.length <= 1
@@ -73,6 +78,12 @@ export function ProfilesManager() {
               ) : (
                 <div className="flex items-center gap-2">
                   <span className={cn("min-w-0 flex-1 truncate text-sm", active && "font-semibold")}>{profile.name}</span>
+                  <ServerPicker
+                    value={profile.server}
+                    disabled={busy || !account.ready}
+                    label={`${profile.name} server`}
+                    onChange={(next) => { if (next !== profile.server) void run(() => account.setProfileServer(profile.id, next)) }}
+                  />
                   {active ? (
                     <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">Active</span>
                   ) : (
@@ -116,11 +127,12 @@ export function ProfilesManager() {
       {editing?.kind === "create" ? (
         <form onSubmit={submit} className="flex gap-2">
           <input autoFocus aria-label="New profile name" placeholder="e.g. JP alt" maxLength={MAX_PROFILE_NAME} value={name} onChange={(event) => setName(event.target.value)} disabled={busy} className={INPUT} />
+          <ServerPicker value={server} onChange={setServer} disabled={busy} label="New profile server" />
           <button type="submit" disabled={busy || !name.trim()} className={BUTTON}>{busy ? "Adding…" : "Add"}</button>
           <button type="button" onClick={close} disabled={busy} className={BUTTON} aria-label="Cancel"><X className="size-4" aria-hidden="true" /></button>
         </form>
       ) : (
-        <button type="button" disabled={busy || atCap || !account.ready} onClick={() => { setEditing({ kind: "create" }); setName(""); setError("") }} className={BUTTON}>
+        <button type="button" disabled={busy || atCap || !account.ready} onClick={() => { setEditing({ kind: "create" }); setName(""); setServer(region); setError("") }} className={BUTTON}>
           <Plus className="size-4" aria-hidden="true" />
           New profile
         </button>

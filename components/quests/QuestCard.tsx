@@ -1,5 +1,5 @@
 import Image from "next/image"
-import Link from "next/link"
+import { RegionLink as Link } from "@/components/RegionLink"
 import { Map as MapIcon } from "lucide-react"
 
 import type { FreeQuestIndexEntry } from "@/lib/atlas-types"

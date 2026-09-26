@@ -1,5 +1,5 @@
 import Image from "next/image"
-import Link from "next/link"
+import { RegionLink as Link } from "@/components/RegionLink"
 import type { ReactNode } from "react"
 
 import type { ServantIndexEntry } from "@/lib/atlas-types"

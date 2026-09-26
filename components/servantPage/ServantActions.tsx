@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import Link from "next/link"
+import { RegionLink as Link } from "@/components/RegionLink"
 import { CheckCircle2, PlusCircle, X } from "lucide-react"
 
 import {
@@ -10,6 +10,7 @@ import {
   type SkillLevels,
   upsertTrackedServant,
 } from "@/lib/material-tracker"
+import { ProfileServerNotice, useProfileMatchesRegion } from "@/components/account/ProfileServerNotice"
 import { Button } from "@/components/ui/button"
 import {
   Popover,
@@ -78,6 +79,8 @@ export function ServantActions({
   appendSkillMaterials,
 }: ServantActionsProps) {
   const [popoverOpen, setPopoverOpen] = useState(false)
+  // Adding edits the active profile; a JP servant belongs in a JP profile.
+  const { matches } = useProfileMatchesRegion()
   const [notice, setNotice] = useState<string | null>(null)
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [ascensionLevel, setAscensionLevel] = useState(1)
@@ -131,6 +134,7 @@ export function ServantActions({
           align="end"
           className="w-[min(30rem,calc(100vw-2rem))] space-y-4 rounded-lg p-4"
         >
+          {matches ? <>
           <LevelSelect
             label="Ascension Lv"
             value={ascensionLevel}
@@ -157,9 +161,10 @@ export function ServantActions({
               />
             ))}
           </div>
-          <Button type="button" className="w-full" onClick={onSendToTracker}>
+          <Button type="button" className="w-full cursor-pointer" onClick={onSendToTracker}>
             Add to Planning
           </Button>
+          </> : <ProfileServerNotice />}
         </PopoverContent>
       </Popover>
 

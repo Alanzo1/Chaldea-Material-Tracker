@@ -74,7 +74,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 - `npm run dev` – run local dev server
 - `npm run data:refresh` – fetch NA Atlas exports and regenerate `public/data/`
-- `npm run data:refresh:jp` – manually fetch JP Atlas exports and regenerate `data/jp/` (local only)
+- `npm run data:refresh:jp` – fetch JP Atlas exports (English names) and regenerate `public/data-jp/`
 - `npm test` – pipeline tests + guard that app code never calls the Atlas API (`node --test`)
 - `npm run build` – production build (`next build --webpack`), no Atlas calls
 - `npm run start` – run production server
@@ -135,6 +135,6 @@ This app primarily targets `NA` data by default.
 
 Google and email/password sign-in with private cloud saves are optional. See [Supabase setup](docs/supabase-setup.md) for migrations, provider setup, environment variables, and validation. Guest progress remains available without an account.
 
-### JP dataset preview
+### JP data
 
-The manual JP command uses the same servant, material, upgrade requirement, farming, and free-quest pipeline as NA, preserving API-provided names. You can also pass `--region NA` or `--region JP` directly to `scripts/atlas/build.mjs`; other values are rejected before fetching. JP output goes to `data/jp/`, outside `public/`, so it isn't deployed, and it's ignored by git until the site uses it (about 45 MB). It is validated against its own previous output. Fetch or validation failures preserve existing datasets. The website and account saves continue using NA data, and the scheduled refresh remains NA-only. This dataset does not yet enable JP tracking in the UI.
+The JP command uses the same servant, material, upgrade requirement, farming, and free-quest pipeline as NA. It reads Atlas's English JP exports, so names are in English, and keeps the Japanese name as `originalName`. You can also pass `--region NA` or `--region JP` directly to `scripts/atlas/build.mjs`; other values are rejected before fetching. JP output goes to `public/data-jp/` and is validated against its own previous output. Fetch or validation failures preserve existing datasets. The `/jp/...` pages and JP game profiles use it. The scheduled refresh updates NA, then JP.

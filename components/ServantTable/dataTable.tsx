@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation"
 
+import { useDataRegion } from "@/lib/data-region"
+
 import {
   ColumnDef,
   flexRender,
@@ -34,6 +36,7 @@ export function DataTable<TData extends { id: number }, TValue>({
   data,
 }: DataTableProps<TData, TValue>) {
   const router = useRouter()
+  const { href } = useDataRegion()
   const [sorting, setSorting] = React.useState<SortingState>([])
 
   const table = useReactTable({
@@ -74,7 +77,7 @@ export function DataTable<TData extends { id: number }, TValue>({
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                   className="cursor-pointer"
-                  onClick={() => router.push(`/servantpage/${row.original.id}`)}
+                  onClick={() => router.push(href(`/servantpage/${row.original.id}`))}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>

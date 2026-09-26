@@ -6,15 +6,23 @@ import { join } from "node:path"
 import { createRegionConfig } from "./region.mjs"
 import { writeDataset, readPreviousStats } from "./dataset.mjs"
 
-test("region defaults to NA; JP output stays outside public/ so it is not deployed", () => {
+test("region defaults to NA; JP uses English exports and public/data-jp", () => {
   assert.equal(createRegionConfig([]).region, "NA")
   for (const region of ["NA", "JP"]) {
     const config = createRegionConfig(["--region", region], "/project")
     assert.equal(config.region, region)
-    assert.equal(config.outDir, region === "NA" ? "/project/public/data" : "/project/data/jp")
-    assert.equal(config.exportUrl("nice_item"), `https://api.atlasacademy.io/export/${region}/nice_item.json`)
-    assert.equal(config.questPhaseUrl(123, 2), `https://api.atlasacademy.io/nice/${region}/quest/123/2`)
-    assert.equal(config.basicServantUrl(100), `https://api.atlasacademy.io/basic/${region}/servant/100`)
+    assert.equal(config.outDir, region === "NA" ? "/project/public/data" : "/project/public/data-jp")
+    // JP uses Atlas's English exports; NA names are already English.
+    const suffix = region === "JP" ? "_lang_en" : ""
+    const lang = region === "JP" ? "?lang=en" : ""
+    assert.equal(config.exportUrl("nice_item"), `https://api.atlasacademy.io/export/${region}/nice_item${suffix}.json`)
+    assert.equal(config.questPhaseUrl(123, 2), `https://api.atlasacademy.io/nice/${region}/quest/123/2${lang}`)
+    assert.equal(config.basicServantUrl(100), `https://api.atlasacademy.io/basic/${region}/servant/100${lang}`)
+    // The war export ignores _lang_en, so JP fetches translated wars one by one.
+    assert.equal(config.warUrl(100), `https://api.atlasacademy.io/nice/${region}/war/100${lang}`)
+    assert.equal(config.translateWars, region === "JP")
+    // JP buff labels are relabelled from NA's English names for the same ids.
+    assert.equal(config.effectNamesUrl, region === "JP" ? "https://api.atlasacademy.io/export/NA/nice_servant.json" : null)
   }
 })
 

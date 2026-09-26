@@ -18,9 +18,15 @@ export function QuestDetail({ quest }: { quest: FreeQuestPhase }) {
     <div className="space-y-6">
       <header className="space-y-3">
         <p className="text-sm text-muted-foreground">{quest.warName.replace(/\s+/g, " ")}</p>
-        <p className="text-lg text-foreground/80">{quest.spotName}</p>
+        <p className="text-lg text-foreground/80">
+          {quest.spotName}
+          {quest.spotOriginalName ? <span lang="ja" className="ml-2 text-sm text-muted-foreground">{quest.spotOriginalName}</span> : null}
+        </p>
         <div className="flex items-end gap-6 sm:gap-10">
-          <h1 className="min-w-0 font-serif text-3xl font-bold italic tracking-tight sm:text-4xl">{quest.name}</h1>
+          <div className="min-w-0">
+            <h1 className="font-serif text-3xl font-bold italic tracking-tight sm:text-4xl">{quest.name}</h1>
+            {quest.originalName ? <p lang="ja" className="mt-1 text-sm text-muted-foreground">{quest.originalName}</p> : null}
+          </div>
           {/* The location's own icon from the in-game quest map. */}
           {quest.spotImage ? <Image src={quest.spotImage} alt={`${quest.spotName} on the quest map`} width={256} height={256} className="size-24 shrink-0 object-contain object-bottom sm:size-36" /> : null}
         </div>

@@ -42,8 +42,6 @@ next-env.d.ts
 
 # atlas pipeline scratch
 /public/data.tmp/
-# JP dataset preview: generated locally, not committed or deployed until the site uses it
-/data/jp/
-/data/jp.tmp/
+/public/data-jp.tmp/
 
 !.env.example
