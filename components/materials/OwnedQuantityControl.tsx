@@ -31,27 +31,22 @@ export function OwnedQuantityControl({ itemId }: { itemId: number }) {
   const keepSelectionOnMouseUp = useRef(false)
 
   useEffect(() => {
-    const trackerState = materialTracker.readTrackedMaterialsState()
-    const initial = parseOwnedQuantity(trackerState.ownedByMaterialId[String(itemId)] ?? 0)
-    setSaved(initial)
-    setDraft(String(initial))
-
-    let cancelled = false
-    computeTrackerStateInWorker(trackerState)
-      .then((payload) => {
-        if (cancelled) return
-        setNeeded(payload.aggregate.requiredMaterials.find((entry) => entry.id === itemId)?.amount ?? 0)
+    let generation = 0
+    const update = () => {
+      const current = ++generation
+      const trackerState = materialTracker.readTrackedMaterialsState()
+      const initial = parseOwnedQuantity(trackerState.ownedByMaterialId[String(itemId)] ?? 0)
+      setSaved(initial)
+      setDraft(String(initial))
+      computeTrackerStateInWorker(trackerState).then((payload) => {
+        if (current === generation) setNeeded(payload.aggregate.requiredMaterials.find((entry) => entry.id === itemId)?.amount ?? 0)
+      }).catch(() => {
+        if (current === generation) setNeeded(materialTracker.calculateAggregateRequirements(trackerState).requiredMaterials.find((entry) => entry.id === itemId)?.amount ?? 0)
       })
-      .catch(() => {
-        if (cancelled) return
-        const aggregate = materialTracker.calculateAggregateRequirements(trackerState)
-        setNeeded(aggregate.requiredMaterials.find((entry) => entry.id === itemId)?.amount ?? 0)
-      })
-
-    return () => {
-      cancelled = true
-      if (flashTimer.current) clearTimeout(flashTimer.current)
     }
+    update()
+    const unsubscribe = materialTracker.subscribeTracker(update)
+    return () => { generation++; unsubscribe(); if (flashTimer.current) clearTimeout(flashTimer.current) }
   }, [itemId])
 
   const draftValue = parseOwnedQuantity(draft)
@@ -111,7 +106,7 @@ export function OwnedQuantityControl({ itemId }: { itemId: number }) {
             )}
           >
             {justSaved ? <Check className="size-4" aria-hidden="true" /> : null}
-            {justSaved ? "Saved" : "Save"}
+            {justSaved ? "Updated" : "Save"}
           </button>
         </div>
         <p className="mt-1 h-4 text-xs text-amber-300" aria-live="polite">

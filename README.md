@@ -129,3 +129,7 @@ This app primarily targets `NA` data by default.
 1. Create a feature branch
 2. Make changes with TypeScript checks passing
 3. Open a PR with a clear summary and screenshots for UI changes
+
+## Accounts and cloud saves
+
+Google and email/password sign-in with private cloud saves are optional. See [Supabase setup](docs/supabase-setup.md) for migrations, provider setup, environment variables, and validation. Guest progress remains available without an account.
