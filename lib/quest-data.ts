@@ -1,11 +1,11 @@
 import { readFile } from "node:fs/promises"
 import { join } from "node:path"
 import type { FreeQuestIndexEntry, FreeQuestPhase } from "./atlas-types"
+import { isBrowsableFreeQuest } from "./free-quests"
 import index from "@/public/data/quests-index.json"
 
 export function getFreeQuests(): FreeQuestIndexEntry[] {
-  // Imperial Capital belongs to the GUDAGUDA event, not the main free-quest browser.
-  return (index as FreeQuestIndexEntry[]).filter((quest) => quest.repeatable && quest.warId !== 9033)
+  return (index as FreeQuestIndexEntry[]).filter(isBrowsableFreeQuest)
 }
 
 export async function getFreeQuest(id: number): Promise<FreeQuestPhase | null> {

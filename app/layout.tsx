@@ -5,15 +5,12 @@ import { Analytics } from "@vercel/analytics/next"
 import { ServantProvider } from "@/app/contexts/HomePageContext"
 import { ItemSearchProvider } from "@/app/contexts/ItemSearchContext"
 import { NavBar } from "@/components/NavBar"
-import { getServantsIndex } from "@/lib/atlas-data"
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const servants = getServantsIndex()
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
@@ -29,7 +26,7 @@ export default function RootLayout({
           }}
         />
         <AccountProvider>
-        <ServantProvider initialServants={servants}>
+        <ServantProvider>
           <NavBar />
           <ItemSearchProvider>{children}</ItemSearchProvider>
         </ServantProvider>

@@ -28,7 +28,7 @@ interface MaterialUsagePanelProps {
 }
 
 export function MaterialUsagePanel({ usage, status, onRetry }: MaterialUsagePanelProps) {
-  const { servants } = useServants()
+  const { servants, servantsStatus } = useServants()
   const { trackedIds } = useCollectionIds()
   const [filter, setFilter] = useState<UsageFilter>("all")
 
@@ -42,7 +42,7 @@ export function MaterialUsagePanel({ usage, status, onRetry }: MaterialUsagePane
   ) as Record<UsageFilter, ItemUsageEntry[]>
   const visible = byFilter[filter]
 
-  if (status === "loading") return <div className="h-40 animate-pulse rounded-lg bg-card/60" />
+  if (status === "loading" || servantsStatus === "loading") return <div className="h-40 animate-pulse rounded-lg bg-card/60" />
   if (status === "error") {
     return (
       <p className="text-sm text-rose-300">
