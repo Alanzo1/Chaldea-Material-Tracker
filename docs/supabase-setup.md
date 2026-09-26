@@ -8,6 +8,8 @@ Open the [project SQL editor](https://supabase.com/dashboard/project/vsrqiqsvwmv
 
 Then run `supabase/migrations/202609260001_game_profiles.sql` once. It adds game profiles (one progress row per FGO account, up to 10 per user, each with its own revision), copies every existing save into a profile named **Main**, and closes the old `save_user_progress` function so tabs running older code show **Not synced** instead of saving to the retired table. Run it before deploying the profiles release. The old `user_progress` table stays as a backup.
 
+Then run `supabase/migrations/202609270001_profile_server.sql` once. It marks each game profile as NA or JP (existing profiles become NA) for JP planning. The previous release keeps working: its two-argument create still makes NA profiles.
+
 The supplied publishable key supports application requests; it cannot install migrations or configure authentication. No service-role key is needed in the website.
 
 ## 2. Configure Google sign-in
