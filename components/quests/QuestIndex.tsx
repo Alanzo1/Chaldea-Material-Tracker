@@ -4,6 +4,7 @@ import { SlidersHorizontal } from "lucide-react"
 import { useMemo, useState } from "react"
 
 import { countQuestFilters, filterQuests, sortQuests } from "@/lib/quest-filters"
+import { LoadingState } from "@/components/ui/spinner"
 import { useFreeQuests } from "@/lib/use-free-quests"
 import { cn } from "@/lib/utils"
 import { QuestCard } from "./QuestCard"
@@ -44,7 +45,9 @@ export function QuestIndex() {
 
       <section className="min-w-0 flex-1">
         <h1 className="sr-only">Free Quests</h1>
-        {visible.length ? (
+        {status === "loading" ? (
+          <LoadingState label="Loading free quests…" className="h-60" />
+        ) : visible.length ? (
           <ul className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-3">
             {visible.map((quest) => (
               <li key={quest.questId}>
@@ -54,9 +57,7 @@ export function QuestIndex() {
           </ul>
         ) : (
           <div className="grid h-60 place-items-center rounded-lg border border-dashed border-border text-sm text-muted-foreground">
-            {status === "loading"
-              ? "Loading free quests…"
-              : status === "error"
+            {status === "error"
                 ? "Couldn't load free quests. Refresh to try again."
                 : "No free quests match these filters."}
           </div>
