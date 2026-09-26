@@ -4,11 +4,16 @@ import { createContext, useContext, useState } from "react"
 
 import type { ServantIndexEntry } from "@/lib/atlas-types"
 import { EMPTY_FILTERS, type ServantFilters, type ServantSort } from "@/lib/servant-filters"
+import { useStaticJson, type StaticJsonStatus } from "@/lib/use-static-json"
+
+const NO_SERVANTS: ServantIndexEntry[] = []
 
 // Home page servant browser state (filters, sort, name search).
 // Lives in the root layout, so it survives navigation between pages.
 interface ServantContextValue {
+  /** Loaded client-side from /data/servants-index.json (empty until `servantsStatus` is "ready"). */
   servants: ServantIndexEntry[]
+  servantsStatus: StaticJsonStatus
   filters: ServantFilters
   setFilters: React.Dispatch<React.SetStateAction<ServantFilters>>
   sort: ServantSort
@@ -19,13 +24,8 @@ interface ServantContextValue {
 
 const ServantContext = createContext<ServantContextValue | null>(null)
 
-export function ServantProvider({
-  children,
-  initialServants = [],
-}: {
-  children: React.ReactNode
-  initialServants?: ServantIndexEntry[]
-}) {
+export function ServantProvider({ children }: { children: React.ReactNode }) {
+  const { data: servants, status: servantsStatus } = useStaticJson("/data/servants-index.json", NO_SERVANTS)
   const [filters, setFilters] = useState<ServantFilters>(EMPTY_FILTERS)
   const [sort, setSort] = useState<ServantSort>("default")
   const [searchQuery, setSearchQuery] = useState("")
@@ -33,7 +33,8 @@ export function ServantProvider({
   return (
     <ServantContext.Provider
       value={{
-        servants: initialServants,
+        servants,
+        servantsStatus,
         filters,
         setFilters,
         sort,

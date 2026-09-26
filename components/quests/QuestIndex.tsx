@@ -3,15 +3,16 @@
 import { SlidersHorizontal } from "lucide-react"
 import { useMemo, useState } from "react"
 
-import type { FreeQuestIndexEntry } from "@/lib/atlas-types"
 import { countQuestFilters, filterQuests, sortQuests } from "@/lib/quest-filters"
+import { useFreeQuests } from "@/lib/use-free-quests"
 import { cn } from "@/lib/utils"
 import { QuestCard } from "./QuestCard"
 import { QuestFilterSidebar } from "./QuestFilterSidebar"
 import { useQuestFilters } from "./QuestFilters"
 
 // /free-quests: filter sidebar on the left, quest cards on the right (same layout as the servant browser).
-export function QuestIndex({ quests }: { quests: FreeQuestIndexEntry[] }) {
+export function QuestIndex() {
+  const { quests, status } = useFreeQuests()
   const { query, filters, sort } = useQuestFilters()
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const visible = useMemo(() => sortQuests(filterQuests(quests, filters, query), sort), [quests, filters, query, sort])
@@ -53,7 +54,11 @@ export function QuestIndex({ quests }: { quests: FreeQuestIndexEntry[] }) {
           </ul>
         ) : (
           <div className="grid h-60 place-items-center rounded-lg border border-dashed border-border text-sm text-muted-foreground">
-            No free quests match these filters.
+            {status === "loading"
+              ? "Loading free quests…"
+              : status === "error"
+                ? "Couldn't load free quests. Refresh to try again."
+                : "No free quests match these filters."}
           </div>
         )}
       </section>
