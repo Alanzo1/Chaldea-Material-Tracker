@@ -6,12 +6,16 @@ import { Dialog } from "radix-ui"
 import type { SupabaseClient, User } from "@supabase/supabase-js"
 import { getSupabase } from "@/lib/supabase/browser"
 import { safeReturnPath } from "@/lib/auth-redirect"
-import { activateTracker, readGuestProgress, setGuestKeyResolver, type TrackedMaterialsState } from "@/lib/material-tracker"
+import { activateTracker, readGuestProgress, readTrackedMaterialsState, setGuestKeyResolver, type TrackedMaterialsState } from "@/lib/material-tracker"
 import { emptyDocument, hasProgress, hydrateDocument, toDocument, validateDocument, type CloudSnapshot, type PendingSave, type PrivateProfile, type ProgressDocument } from "@/lib/cloud-progress"
 import { CloudSync, type SyncStorage, type SyncTransport } from "@/lib/cloud-sync"
+import { dataBase, type Region } from "@/lib/region"
+import { loadStaticJson } from "@/lib/use-static-json"
 import {
   ProfileError,
   createProfile as addProfileToList,
+  pickProfileForServer,
+  setProfileServer as setServerInList,
   deleteProfile as removeProfileFromList,
   describeProfileError,
   guestProgressKey,
@@ -33,6 +37,21 @@ const profileCacheKey = (userId: string, profileId: string) => `${accountKey(use
 const activeProfileKey = (userId: string) => `${accountKey(userId)}:active`
 const profileListKey = (userId: string) => `${accountKey(userId)}:profiles`
 const importSeenKey = (userId: string) => `${accountKey(userId)}:import-seen`
+// Last profile used per game server, so the NA | JP switch on Planning returns to it.
+const lastUsedKey = (scope: string, server: Region) => `chaldea:last-profile:${scope}:${server}`
+const asServer = (value: unknown): Region => (value === "JP" ? "JP" : "NA")
+const toMeta = (row: { id: string; name: string; server?: unknown }): ProfileMeta => ({ id: row.id, name: row.name, server: asServer(row.server) })
+
+// A JP profile can only move to NA when NA has every servant it tracks.
+async function assertServantsOnNa(servantIds: number[]) {
+  if (!servantIds.length) return
+  const [na, jp] = (await Promise.all([loadStaticJson("/data/servants-index.json"), loadStaticJson("/data-jp/servants-index.json")])) as { id: number; name: string }[][]
+  const naIds = new Set(na.map((servant) => servant.id))
+  const missing = servantIds.filter((id) => !naIds.has(id))
+  if (!missing.length) return
+  const names = missing.map((id) => jp.find((servant) => servant.id === id)?.name ?? `#${id}`)
+  throw new ProfileError(`NA doesn't have ${names.join(", ")} yet. Remove ${missing.length === 1 ? "it" : "them"} from this profile first.`)
+}
 
 const readCache = (key: string): PendingSave | null => {
   const raw = localStorage.getItem(key)
@@ -56,7 +75,8 @@ const readImportCandidates = (): ImportCandidate[] =>
     return { ...meta, document, hasProgress: hasProgress(document) }
   })
 
-interface CloudProfileRow extends ProfileMeta {
+interface CloudProfileRow extends Omit<ProfileMeta, "server"> {
+  server?: string
   document: unknown
   revision: number
 }
@@ -77,10 +97,11 @@ function cloudApi(client: SupabaseClient, token: () => Promise<string>) {
       const data = await rpc<{ settings: { display_name: string; theme: "dark" | "light" } | null; profiles: CloudProfileRow[] }>("read_progress_profiles")
       return {
         settings: data.settings ? { displayName: data.settings.display_name, theme: data.settings.theme } : null,
-        profiles: data.profiles.map((row) => ({ id: row.id, name: row.name, document: row.document, revision: row.revision })),
+        profiles: data.profiles.map((row) => ({ id: row.id, name: row.name, server: row.server, document: row.document, revision: row.revision })),
       }
     },
-    create: (name: string, document: ProgressDocument) => rpc<{ id: string; name: string; revision: number }>("create_progress_profile", { profile_name: name, progress_document: document }),
+    create: (name: string, document: ProgressDocument, server: Region) => rpc<{ id: string; name: string; revision: number; server?: string }>("create_progress_profile", { profile_name: name, progress_document: document, profile_server: server }),
+    setServer: (id: string, server: Region) => rpc<void>("set_progress_profile_server", { profile_id: id, profile_server: server }),
     save: async (id: string, revision: number, document: ProgressDocument) => Number(await rpc("save_progress_profile", { profile_id: id, expected_revision: revision, progress_document: document })),
     rename: (id: string, name: string) => rpc<void>("rename_progress_profile", { profile_id: id, profile_name: name }),
     remove: (id: string) => rpc<void>("delete_progress_profile", { profile_id: id }),
@@ -91,7 +112,8 @@ function cloudApi(client: SupabaseClient, token: () => Promise<string>) {
 /** What the active session (guest or account) can do with game profiles. */
 interface ProfileSession {
   switchTo(id: string): Promise<void>
-  create(name: string): Promise<void>
+  create(name: string, server: Region): Promise<void>
+  setServer(id: string, server: Region): Promise<void>
   rename(id: string, name: string): Promise<void>
   remove(id: string): Promise<void>
 }
@@ -108,7 +130,10 @@ interface AccountContextValue {
   profiles: ProfileMeta[]
   activeProfile: ProfileMeta | null
   switchProfile: (id: string) => Promise<void>
-  createProfile: (name: string) => Promise<void>
+  createProfile: (name: string, server: Region) => Promise<void>
+  setProfileServer: (id: string, server: Region) => Promise<void>
+  /** Opens the last used (or first) profile on that server; false when there is none. */
+  switchToServer: (server: Region) => Promise<boolean>
   renameProfile: (id: string, name: string) => Promise<void>
   deleteProfile: (id: string) => Promise<void>
   importOffered: boolean
@@ -177,15 +202,22 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       }
       const open = (id: string) => {
         commit({ ...data, active: id })
+        const server = data.profiles.find((profile) => profile.id === id)?.server ?? "NA"
+        localStorage.setItem(lastUsedKey("guest", server), id)
         activateTracker(readGuestProgress(guestProgressKey(id)), null)
       }
       open(data.active)
       return {
         switchTo: async (id) => open(id),
-        create: async (name) => {
+        create: async (name, server) => {
           const id = newId()
-          commit({ ...data, profiles: addProfileToList(data.profiles, name, id) })
+          commit({ ...data, profiles: addProfileToList(data.profiles, name, id, server) })
           open(id)
+        },
+        setServer: async (id, server) => {
+          if (server === "NA") await assertServantsOnNa(readGuestProgress(guestProgressKey(id)).servants.map((s) => s.servantId))
+          commit({ ...data, profiles: setServerInList(data.profiles, id, server) })
+          if (data.active === id) localStorage.setItem(lastUsedKey("guest", server), id)
         },
         rename: async (id, name) => commit({ ...data, profiles: renameProfileInList(data.profiles, id, name) }),
         remove: async (id) => {
@@ -236,7 +268,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       const applyCloudState = (state: CloudState) => {
         if (!valid()) return
         showSettings(state.settings ?? settingsRef.current)
-        const list = state.profiles.map(({ id, name }) => ({ id, name }))
+        const list = state.profiles.map(toMeta)
         localStorage.setItem(profileListKey(nextUser.id), JSON.stringify({ settings: state.settings, profiles: list }))
         const lost = activeId && !list.some((profile) => profile.id === activeId)
           ? profilesRef.current.find((profile) => profile.id === activeId)
@@ -254,7 +286,9 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       const openProfile = async (id: string) => {
         engine.current?.dispose(); engine.current = null
         activeId = id
+        const server = profilesRef.current.find((profile) => profile.id === id)?.server ?? "NA"
         localStorage.setItem(activeProfileKey(nextUser.id), id)
+        localStorage.setItem(lastUsedKey(nextUser.id, server), id)
         setActiveProfileId(id)
         activateTracker(blankState(), () => {})
         setReady(false); setError("")
@@ -272,7 +306,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           if (current() && sync.current) sync.edit(toDocument(state), settingsRef.current)
         }
         const apply = async (snapshot: CloudSnapshot, stillCurrent: () => boolean) => {
-          const state = await hydrateDocument(snapshot.document)
+          const state = await hydrateDocument(snapshot.document, dataBase(server))
           if (!current() || !stillCurrent()) return
           activateTracker(state, persist)
           setReady(true)
@@ -301,7 +335,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       try {
         state = await cloud.readAll()
         if (!state.profiles.length) {
-          try { await cloud.create("Main", emptyDocument()) } catch (error) { if ((error as { code?: string }).code !== "23505") throw error }
+          try { await cloud.create("Main", emptyDocument(), "NA") } catch (error) { if ((error as { code?: string }).code !== "23505") throw error }
           state = await cloud.readAll()
         }
       } catch (error) {
@@ -323,7 +357,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       }
 
       showSettings(state.settings ?? fallbackSettings)
-      const list = state.profiles.map(({ id, name }) => ({ id, name }))
+      const list = state.profiles.map(toMeta)
       const remembered = localStorage.getItem(activeProfileKey(nextUser.id))
       activeId = list.some((profile) => profile.id === remembered) ? remembered! : list[0].id
       showProfiles(list, activeId)
@@ -349,15 +383,31 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           if (sync?.current?.dirty && !sync.conflict) await sync.flush()
           await openProfile(id)
         }),
-        create: (name) => run(async () => {
+        create: (name, server) => run(async () => {
           const clean = normalizeProfileName(name)
-          addProfileToList(profilesRef.current, clean, "pending")
-          const created = await cloud.create(clean, emptyDocument()).catch((error) => { throw new ProfileError(describeProfileError(error, clean)) })
-          const nextList = [...profilesRef.current, { id: created.id, name: created.name }]
+          addProfileToList(profilesRef.current, clean, "pending", server)
+          const created = await cloud.create(clean, emptyDocument(), server).catch((error) => { throw new ProfileError(describeProfileError(error, clean)) })
+          const nextList = [...profilesRef.current, toMeta({ ...created, server: created.server ?? server })]
           showProfiles(nextList, activeId)
           const sync = engine.current
           if (sync?.current?.dirty && !sync.conflict) await sync.flush()
           await openProfile(created.id)
+        }),
+        setServer: (id, server) => run(async () => {
+          if (server === "NA") {
+            const document = id === activeId
+              ? toDocument(readTrackedMaterialsState())
+              : ((await cloud.readAll()).profiles.find((row) => row.id === id)?.document as ProgressDocument | undefined)
+            await assertServantsOnNa((document?.servants ?? []).map((s) => s.servantId))
+          }
+          await cloud.setServer(id, server).catch((error) => { throw new ProfileError(describeProfileError(error)) })
+          const nextList = setServerInList(profilesRef.current, id, server)
+          showProfiles(nextList, activeId)
+          if (id === activeId) {
+            localStorage.setItem(lastUsedKey(nextUser.id, server), id)
+            // Reload with the other server's servant data.
+            await openProfile(id)
+          }
         }),
         rename: (id, name) => run(async () => {
           const nextList = renameProfileInList(profilesRef.current, id, name)
@@ -439,7 +489,15 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     user, settings, status, ready, notice, error: error || sync?.error || "", configured: Boolean(client), sync,
     profiles, activeProfile,
     switchProfile: (id) => id === activeProfileId ? Promise.resolve() : withSession((current) => current.switchTo(id)),
-    createProfile: (name) => withSession((current) => current.create(name)),
+    createProfile: (name, server) => withSession((current) => current.create(name, server)),
+    setProfileServer: (id, server) => withSession((current) => current.setServer(id, server)),
+    switchToServer: async (server) => {
+      const scope = user?.id ?? "guest"
+      const id = pickProfileForServer(profiles, server, localStorage.getItem(lastUsedKey(scope, server)))
+      if (!id) return false
+      if (id !== activeProfileId) await withSession((current) => current.switchTo(id))
+      return true
+    },
     renameProfile: (id, name) => withSession((current) => current.rename(id, name)),
     deleteProfile: (id) => withSession((current) => current.remove(id)),
     importOffered: importOffered && ready, importCandidates,
@@ -484,7 +542,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       const byId = new Map(importCandidates.map((candidate) => [candidate.id, candidate]))
       const failed: string[] = []
       for (const profile of plan.add) {
-        try { await cloud.create(profile.name, byId.get(profile.id)!.document) } catch { failed.push(profile.name) }
+        try { await cloud.create(profile.name, byId.get(profile.id)!.document, profile.server) } catch { failed.push(profile.name) }
       }
       localStorage.setItem(importSeenKey(user.id), "true")
       setImportOffered(false)

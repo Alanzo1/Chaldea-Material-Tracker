@@ -34,10 +34,11 @@ export function validateDocument(value: unknown): ProgressDocument {
 }
 export function hasProgress(d: ProgressDocument) { return d.servants.length > 0 || d.qp > 0 || Object.values(d.ownedByMaterialId).some(n => n > 0) }
 
-export async function hydrateDocument(document: ProgressDocument): Promise<TrackedMaterialsState> {
+/** Rebuilds tracker state from a saved document using the servant files under `dataBase` (/data or /data-jp). */
+export async function hydrateDocument(document: ProgressDocument, dataBase = "/data"): Promise<TrackedMaterialsState> {
   validateDocument(document)
   const servants = await Promise.all(document.servants.map(async saved => {
-    const response = await fetch(`/data/servants/${saved.servantId}.json`, { cache: "force-cache" })
+    const response = await fetch(`${dataBase}/servants/${saved.servantId}.json`, { cache: "force-cache" })
     if (!response.ok) throw new Error(`Unable to load servant ${saved.servantId}. Retry when connected.`)
     const s = await response.json()
     return { ...saved, servantName: s.name, className: s.className, rarity: s.rarity,

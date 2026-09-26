@@ -1,5 +1,6 @@
 // Game profiles: separate planning progress per FGO account (main + alts).
 // Pure list logic plus the guest (device) profile index; no React, no @/ imports.
+import type { Region } from "./region"
 
 export const MAX_PROFILES = 10
 export const MAX_PROFILE_NAME = 40
@@ -11,7 +12,12 @@ export const guestProgressKey = (id: string) => `chaldea:guest-progress:${id}`
 export interface ProfileMeta {
   id: string
   name: string
+  /** The game server this account plays on; decides which data Planning uses. */
+  server: Region
 }
+
+const asServer = (value: unknown): Region => (value === "JP" ? "JP" : "NA")
+
 
 export interface GuestProfiles {
   version: 1
@@ -41,11 +47,22 @@ function assertNameFree(profiles: ProfileMeta[], name: string, exceptId?: string
   }
 }
 
-export function createProfile(profiles: ProfileMeta[], name: string, id: string): ProfileMeta[] {
+export function createProfile(profiles: ProfileMeta[], name: string, id: string, server: Region = "NA"): ProfileMeta[] {
   const normalized = normalizeProfileName(name)
   if (profiles.length >= MAX_PROFILES) throw new ProfileError(`You can have up to ${MAX_PROFILES} profiles.`)
   assertNameFree(profiles, normalized)
-  return [...profiles, { id, name: normalized }]
+  return [...profiles, { id, name: normalized, server }]
+}
+
+export function setProfileServer(profiles: ProfileMeta[], id: string, server: Region): ProfileMeta[] {
+  if (!profiles.some((profile) => profile.id === id)) throw new ProfileError("That profile no longer exists.")
+  return profiles.map((profile) => (profile.id === id ? { ...profile, server } : profile))
+}
+
+/** The profile to open for a server: the remembered one if it plays there, else the first that does. */
+export function pickProfileForServer(profiles: ProfileMeta[], server: Region, rememberedId: string | null) {
+  const onServer = profiles.filter((profile) => profile.server === server)
+  return (onServer.find((profile) => profile.id === rememberedId) ?? onServer[0])?.id ?? null
 }
 
 export function renameProfile(profiles: ProfileMeta[], id: string, name: string): ProfileMeta[] {
@@ -94,8 +111,10 @@ export function saveGuestProfiles(store: KeyValueStore, value: GuestProfiles) {
 export function loadGuestProfiles(store: KeyValueStore, newId: () => string): GuestProfiles {
   const saved = readJson(store, GUEST_PROFILES_KEY)
   if (isGuestProfiles(saved)) {
-    if (saved.profiles.some((profile) => profile.id === saved.active)) return saved
-    const repaired = { ...saved, active: saved.profiles[0].id }
+    // Lists saved before servers existed are NA.
+    const profiles = saved.profiles.map((profile) => ({ ...profile, server: asServer(profile.server) }))
+    if (profiles.some((profile) => profile.id === saved.active)) return { ...saved, profiles }
+    const repaired = { ...saved, profiles, active: profiles[0].id }
     saveGuestProfiles(store, repaired)
     return repaired
   }
@@ -108,7 +127,7 @@ export function loadGuestProfiles(store: KeyValueStore, newId: () => string): Gu
     const qp = record.qp ?? (legacyQp == null ? undefined : Number(legacyQp))
     store.set(guestProgressKey(id), JSON.stringify(qp === undefined ? record : { ...record, qp }))
   }
-  const created: GuestProfiles = { version: 1, active: id, profiles: [{ id, name: "Main" }] }
+  const created: GuestProfiles = { version: 1, active: id, profiles: [{ id, name: "Main", server: "NA" }] }
   saveGuestProfiles(store, created)
   return created
 }
@@ -125,7 +144,7 @@ export function planImport(guest: ImportCandidate[], account: ProfileMeta[]) {
   const skippedOverCap: ProfileMeta[] = []
 
   for (const candidate of guest) {
-    const meta = { id: candidate.id, name: candidate.name }
+    const meta = { id: candidate.id, name: candidate.name, server: asServer(candidate.server) }
     if (!candidate.hasProgress) {
       skippedEmpty.push(meta)
       continue
@@ -136,7 +155,7 @@ export function planImport(guest: ImportCandidate[], account: ProfileMeta[]) {
     }
     const name = uniqueName(candidate.name, taken)
     taken.push(name)
-    add.push({ id: candidate.id, name })
+    add.push({ ...meta, name })
   }
 
   return { add, skippedEmpty, skippedOverCap }

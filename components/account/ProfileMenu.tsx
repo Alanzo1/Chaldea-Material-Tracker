@@ -6,6 +6,9 @@ import { Check, Plus, Settings2, UserRound } from "lucide-react"
 import { useState, type FormEvent } from "react"
 
 import { useAccount } from "@/components/account/AccountProvider"
+import { ServerPicker, ServerTag } from "@/components/account/ServerTag"
+import { useDataRegion } from "@/lib/data-region"
+import type { Region } from "@/lib/region"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { describeProfileError, MAX_PROFILE_NAME, MAX_PROFILES } from "@/lib/profiles"
 import { cn } from "@/lib/utils"
@@ -21,6 +24,8 @@ export function ProfileMenu() {
   const [name, setName] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
+  const { region } = useDataRegion()
+  const [server, setServer] = useState<Region>(region)
 
   const run = async (action: () => Promise<void>, after?: () => void) => {
     setBusy(true)
@@ -38,11 +43,12 @@ export function ProfileMenu() {
   const onOpenChange = (next: boolean) => {
     setOpen(next)
     if (!next) { setCreating(false); setName(""); setError("") }
+    else setServer(region)
   }
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    void run(() => account.createProfile(name), () => onOpenChange(false))
+    void run(() => account.createProfile(name, server), () => onOpenChange(false))
   }
 
   const label = account.activeProfile?.name ?? (account.user ? "Account" : "Profile")
@@ -76,7 +82,8 @@ export function ProfileMenu() {
                   className={cn(ROW, active && "font-medium")}
                 >
                   <Check className={cn("size-4 shrink-0", active ? "text-foreground" : "invisible")} aria-hidden="true" />
-                  <span className="truncate">{profile.name}</span>
+                  <span className="min-w-0 flex-1 truncate">{profile.name}</span>
+                  <ServerTag server={profile.server} />
                 </button>
               </li>
             )
@@ -84,7 +91,7 @@ export function ProfileMenu() {
         </ul>
 
         {creating ? (
-          <form onSubmit={submit} className="mt-1 flex gap-2 px-1">
+          <form onSubmit={submit} className="mt-1 flex flex-wrap gap-2 px-1">
             <input
               autoFocus
               aria-label="New profile name"
@@ -93,8 +100,10 @@ export function ProfileMenu() {
               value={name}
               onChange={(event) => setName(event.target.value)}
               disabled={busy}
-              className="h-10 min-w-0 flex-1 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring"
+              className="h-10 min-w-0 flex-1 basis-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-ring"
             />
+            <ServerPicker value={server} onChange={setServer} disabled={busy} label="New profile server" />
+            <span className="flex-1" />
             <button type="submit" disabled={busy || !name.trim()} className="h-10 cursor-pointer rounded-md bg-foreground px-3 text-sm font-medium text-background disabled:cursor-not-allowed disabled:opacity-50">
               {busy ? "…" : "Add"}
             </button>

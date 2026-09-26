@@ -3,6 +3,7 @@
 import { Check } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
+import { ProfileServerNotice, useProfileMatchesRegion } from "@/components/account/ProfileServerNotice"
 import { normalizeOwnedDraft, parseOwnedQuantity } from "@/lib/item-usage"
 import * as materialTracker from "@/lib/material-tracker"
 import { computeTrackerStateInWorker } from "@/lib/material-tracker-worker-client"
@@ -22,7 +23,13 @@ function Stat({ label, value, tone }: { label: string; value: number; tone?: str
 
 // Owned count for one material, shared with the Planning page (tracker ownedByMaterialId).
 // The user types a quantity and presses Save (or Enter); nothing is stored before that.
+// It edits the active profile, so it only shows when that profile plays on this page's region.
 export function OwnedQuantityControl({ itemId }: { itemId: number }) {
+  const { matches } = useProfileMatchesRegion()
+  return matches ? <OwnedQuantityEditor itemId={itemId} /> : <ProfileServerNotice />
+}
+
+function OwnedQuantityEditor({ itemId }: { itemId: number }) {
   const [saved, setSaved] = useState(0)
   const [draft, setDraft] = useState("0")
   const [needed, setNeeded] = useState(0)
