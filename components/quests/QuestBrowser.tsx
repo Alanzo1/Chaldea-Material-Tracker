@@ -5,6 +5,7 @@ import { Map as MapIcon, Search, SlidersHorizontal } from "lucide-react"
 import { useMemo, useState } from "react"
 import type { FreeQuestPhase } from "@/lib/atlas-types"
 import { countQuestFilters, filterQuests, sortQuests } from "@/lib/quest-filters"
+import { LoadingState } from "@/components/ui/spinner"
 import { useFreeQuests } from "@/lib/use-free-quests"
 import { cn } from "@/lib/utils"
 import { QuestCard } from "./QuestCard"
@@ -41,7 +42,8 @@ export function QuestBrowser({ selected }: { selected?: FreeQuestPhase }) {
               <QuestCard quest={quest} selected={selected?.questId === quest.questId} onNavigate={() => setMobileOpen(false)} />
             </li>)}
           </ul>
-          {!visible.length && <p className="py-10 text-center text-sm text-muted-foreground">{status === "loading" ? "Loading quests…" : status === "error" ? "Couldn't load quests. Refresh to try again." : "No quests match these filters."}</p>}
+          {status === "loading" && <LoadingState label="Loading quests…" className="py-10" />}
+          {status !== "loading" && !visible.length && <p className="py-10 text-center text-sm text-muted-foreground">{status === "error" ? "Couldn't load quests. Refresh to try again." : "No quests match these filters."}</p>}
         </div>
       </aside>
       <section className="min-w-0">

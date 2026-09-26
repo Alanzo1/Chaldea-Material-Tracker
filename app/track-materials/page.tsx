@@ -9,6 +9,7 @@ import { Boxes, Pickaxe, Users } from "lucide-react"
 
 import { HEADER_ACTION_BUTTON_CLASS } from "@/components/HeaderActionLink"
 import { TrackedServantsBrowser } from "@/components/tracker/TrackedServantsBrowser"
+import { LoadingState } from "@/components/ui/spinner"
 import * as materialTracker from "@/lib/material-tracker"
 import type { RequirementTotals, TrackedMaterialsState } from "@/lib/material-tracker"
 import { computeTrackerStateInWorker } from "@/lib/material-tracker-worker-client"
@@ -211,6 +212,10 @@ export default function TrackMaterialsPage() {
     ownedByMaterialId: {},
   })
   const [servantIndex, setServantIndex] = useState<ServantIndexItem[]>([])
+  const [servantIndexLoaded, setServantIndexLoaded] = useState(false)
+  // Saved progress is read after mount and totals come from a worker; show a spinner until both are in.
+  const [trackerLoaded, setTrackerLoaded] = useState(false)
+  const [totalsReady, setTotalsReady] = useState(false)
   const [materialIndex, setMaterialIndex] = useState<MaterialIndexItem[]>([])
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -227,6 +232,7 @@ export default function TrackMaterialsPage() {
       .then((r) => r.json())
       .then((p) => setServantIndex(Array.isArray(p) ? p : []))
       .catch(() => setServantIndex([]))
+      .finally(() => setServantIndexLoaded(true))
     fetch("/data/materials-index.json", { cache: "force-cache" })
       .then((r) => r.json())
       .then((p) => setMaterialIndex(Array.isArray(p) ? p : []))
@@ -235,6 +241,7 @@ export default function TrackMaterialsPage() {
       const state = materialTracker.readTrackedMaterialsState()
       setTrackerState(state)
       setCurrentQpInput(String(state.qp ?? 0))
+      setTrackerLoaded(true)
     }
     update()
     return materialTracker.subscribeTracker(update)
@@ -266,12 +273,14 @@ export default function TrackMaterialsPage() {
   }, [aggregate.materialsWithOwned, materialIndex])
 
   useEffect(() => {
+    if (!trackerLoaded) return
     let cancelled = false
     computeTrackerStateInWorker(trackerState)
       .then((payload) => {
         if (cancelled) return
         setAggregate(payload.aggregate)
         setPerServantSummaryById(payload.perServantSummaryById)
+        setTotalsReady(true)
       })
       .catch(() => {
         if (cancelled) return
@@ -290,12 +299,13 @@ export default function TrackMaterialsPage() {
         )
         setAggregate(fallbackAggregate)
         setPerServantSummaryById(fallbackPerServantSummaryById)
+        setTotalsReady(true)
       })
 
     return () => {
       cancelled = true
     }
-  }, [trackerState])
+  }, [trackerState, trackerLoaded])
 
   useEffect(() => {
     if (activeTab !== "farming" || !incompleteMaterials.length) return
@@ -404,8 +414,10 @@ export default function TrackMaterialsPage() {
         )}
       >
 
+        {!totalsReady && <LoadingState label="Loading your plan…" className="h-60" />}
+
         {/* ── TRACKER TAB ─────────────────────────────────────────────────── */}
-        {activeTab === "tracker" && (
+        {totalsReady && activeTab === "tracker" && (
           <>
             {/* Servants: same browser as /servants, limited to tracked servants */}
             <TrackedServantsBrowser
@@ -418,7 +430,7 @@ export default function TrackMaterialsPage() {
         )}
 
         {/* ── MATERIALS TAB ───────────────────────────────────────────────── */}
-        {activeTab === "materials" && (
+        {totalsReady && activeTab === "materials" && (
           <>
               {/* QP summary */}
               <section className="rounded-xl border border-border bg-card/60 p-5">
@@ -490,7 +502,7 @@ export default function TrackMaterialsPage() {
         )}
 
         {/* ── FARMING TAB ─────────────────────────────────────────────────── */}
-        {activeTab === "farming" && (
+        {totalsReady && activeTab === "farming" && (
           <section>
             <div className="mb-4">
               <h2 className="text-sm font-semibold text-foreground">Farming Summary</h2>
@@ -557,7 +569,9 @@ export default function TrackMaterialsPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none"
           />
-          {filteredSearchResults.length ? (
+          {!servantIndexLoaded ? (
+            <LoadingState label="Loading servants…" className="py-10" />
+          ) : filteredSearchResults.length ? (
             <VirtualizedList
               items={filteredSearchResults}
               itemHeight={68}
