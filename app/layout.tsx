@@ -1,4 +1,5 @@
 import "./globals.css"
+import { AccountProvider } from "@/components/account/AccountProvider"
 import { Analytics } from "@vercel/analytics/next"
 
 import { ServantProvider } from "@/app/contexts/HomePageContext"
@@ -21,17 +22,18 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  localStorage.setItem("theme", "dark");
-                  document.documentElement.classList.add("dark");
+                  document.documentElement.classList.toggle("dark", localStorage.getItem("theme") !== "light");
                 } catch (e) {}
               })();
             `,
           }}
         />
+        <AccountProvider>
         <ServantProvider initialServants={servants}>
           <NavBar />
           <ItemSearchProvider>{children}</ItemSearchProvider>
         </ServantProvider>
+        </AccountProvider>
         <Analytics />
       </body>
     </html>

@@ -246,13 +246,13 @@ export default function TrackMaterialsPage() {
       .then((r) => r.json())
       .then((p) => setMaterialIndex(Array.isArray(p) ? p : []))
       .catch(() => setMaterialIndex([]))
-    try {
-      const raw = window.localStorage.getItem("trackerCurrentQp")
-      const parsed = Number(raw ?? 0)
-      setCurrentQpInput(String(Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0))
-    } catch {
-      setCurrentQpInput("0")
+    const update = () => {
+      const state = materialTracker.readTrackedMaterialsState()
+      setTrackerState(state)
+      setCurrentQpInput(String(state.qp ?? 0))
     }
+    update()
+    return materialTracker.subscribeTracker(update)
   }, [])
 
   const trackedServantIds = useMemo(() => new Set(trackerState.servants.map((e) => e.servantId)), [trackerState.servants])
@@ -341,11 +341,13 @@ export default function TrackMaterialsPage() {
   }, [efficiencyByMaterialId, incompleteMaterials])
 
   const handleAddServant = async (servant: ServantIndexItem) => {
+    const scope = materialTracker.getTrackerScope()
     setAddingServantId(servant.id)
     try {
       const r = await fetch(`/data/servants/${servant.id}.json`, { cache: "force-cache" })
       if (!r.ok) throw new Error("Failed to load servant")
       const payload = await r.json()
+      if (scope !== materialTracker.getTrackerScope()) return
       setTrackerState(materialTracker.upsertTrackedServant({
         servantId: Number(payload.id),
         servantName: String(payload.name ?? servant.name),
@@ -370,10 +372,10 @@ export default function TrackMaterialsPage() {
   }
 
   const handleCurrentQpChange = (value: string) => {
-    if (value === "") { setCurrentQpInput(""); try { window.localStorage.setItem("trackerCurrentQp", "0") } catch {} return }
+    if (value === "") { setCurrentQpInput(""); materialTracker.setCurrentQp(0); return }
     const safeValue = Number.isFinite(Number(value)) ? Math.max(0, Math.floor(Number(value))) : 0
     setCurrentQpInput(String(safeValue))
-    try { window.localStorage.setItem("trackerCurrentQp", String(safeValue)) } catch {}
+    materialTracker.setCurrentQp(safeValue)
   }
 
   const currentQp = Number(currentQpInput === "" ? 0 : currentQpInput)
