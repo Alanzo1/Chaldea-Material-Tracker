@@ -11,5 +11,5 @@ export default async function FreeQuestPage({ params }: { params: Promise<{ ques
   const { questId } = await params
   const quest = await getFreeQuest(Number(questId))
   if (!quest) notFound()
-  return <QuestBrowser quests={getFreeQuests()} selected={quest} />
+  return <QuestBrowser selected={quest} />
 }

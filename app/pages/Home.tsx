@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import { useServants } from "../contexts/HomePageContext"
 
 function Homepage() {
-  const { servants, filters, setFilters, sort, setSort, searchQuery, setSearchQuery } = useServants()
+  const { servants, servantsStatus, filters, setFilters, sort, setSort, searchQuery, setSearchQuery } = useServants()
   const { trackedIds } = useCollectionIds()
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
 
@@ -59,7 +59,16 @@ function Homepage() {
       </aside>
 
       <section className="min-w-0 flex-1">
-        <ServantGrid servants={visibleServants} />
+        <ServantGrid
+          servants={visibleServants}
+          emptyMessage={
+            servantsStatus === "loading"
+              ? "Loading servants…"
+              : servantsStatus === "error"
+                ? "Couldn't load servants. Refresh to try again."
+                : undefined
+          }
+        />
       </section>
     </main>
   )
