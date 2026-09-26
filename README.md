@@ -73,7 +73,8 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Scripts
 
 - `npm run dev` – run local dev server
-- `npm run data:refresh` – fetch Atlas exports and regenerate `public/data/`
+- `npm run data:refresh` – fetch NA Atlas exports and regenerate `public/data/`
+- `npm run data:refresh:jp` – manually fetch JP Atlas exports and regenerate `data/jp/` (local only)
 - `npm test` – pipeline tests + guard that app code never calls the Atlas API (`node --test`)
 - `npm run build` – production build (`next build --webpack`), no Atlas calls
 - `npm run start` – run production server
@@ -133,3 +134,7 @@ This app primarily targets `NA` data by default.
 ## Accounts and cloud saves
 
 Google and email/password sign-in with private cloud saves are optional. See [Supabase setup](docs/supabase-setup.md) for migrations, provider setup, environment variables, and validation. Guest progress remains available without an account.
+
+### JP dataset preview
+
+The manual JP command uses the same servant, material, upgrade requirement, farming, and free-quest pipeline as NA, preserving API-provided names. You can also pass `--region NA` or `--region JP` directly to `scripts/atlas/build.mjs`; other values are rejected before fetching. JP output goes to `data/jp/`, outside `public/`, so it isn't deployed, and it's ignored by git until the site uses it (about 45 MB). It is validated against its own previous output. Fetch or validation failures preserve existing datasets. The website and account saves continue using NA data, and the scheduled refresh remains NA-only. This dataset does not yet enable JP tracking in the UI.
