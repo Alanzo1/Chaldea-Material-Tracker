@@ -5,10 +5,10 @@ import Link from "next/link"
 import Image from "next/image"
 import type { ReactNode } from "react"
 import { useEffect, useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
 import { Boxes, Pickaxe, Users } from "lucide-react"
 
 import { HEADER_ACTION_BUTTON_CLASS } from "@/components/HeaderActionLink"
+import { TrackedServantsBrowser } from "@/components/tracker/TrackedServantsBrowser"
 import * as materialTracker from "@/lib/material-tracker"
 import type { RequirementTotals, TrackedMaterialsState } from "@/lib/material-tracker"
 import { computeTrackerStateInWorker } from "@/lib/material-tracker-worker-client"
@@ -62,19 +62,6 @@ function getStarColorClass(rarity: number) {
   if (rarity <= 2) return "text-amber-700"
   if (rarity === 3) return "text-slate-400"
   return "text-yellow-400"
-}
-function moveBefore(ids: number[], draggedId: number, targetId: number) {
-  if (draggedId === targetId) return ids
-  const next = [...ids]
-  const draggedIndex = next.indexOf(draggedId)
-  const targetIndex = next.indexOf(targetId)
-  if (draggedIndex < 0 || targetIndex < 0) return ids
-  next.splice(draggedIndex, 1)
-  next.splice(targetIndex, 0, draggedId)
-  return next
-}
-function formatSkillLevels(levels: [number, number, number]) {
-  return `${levels[0]}/${levels[1]}/${levels[2]}`
 }
 
 async function mapWithConcurrency<T, R>(
@@ -216,7 +203,6 @@ function Modal({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function TrackMaterialsPage() {
-  const router = useRouter()
   const [currentQpInput, setCurrentQpInput] = useState("0")
   const [activeTab, setActiveTab] = useState<"tracker" | "materials" | "farming">("tracker")
   const [trackerState, setTrackerState] = useState<TrackedMaterialsState>({
@@ -230,7 +216,6 @@ export default function TrackMaterialsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [addingServantId, setAddingServantId] = useState<number | null>(null)
   const [isMaterialSearchOpen, setIsMaterialSearchOpen] = useState(false)
-  const [draggedServantId, setDraggedServantId] = useState<number | null>(null)
   const [efficiencyByMaterialId, setEfficiencyByMaterialId] = useState<EfficiencyLookup>({})
   const [expandedFarmingMaterialIds, setExpandedFarmingMaterialIds] = useState<number[]>([])
   const [aggregate, setAggregate] = useState<RequirementTotals>(EMPTY_TOTALS)
@@ -409,173 +394,97 @@ export default function TrackMaterialsPage() {
         </div>
       </div>
 
-      <div className="relative z-0 mx-auto flex w-full max-w-7xl flex-col gap-5 px-5 pt-6 md:px-8">
+      <div
+        className={cn(
+          "relative z-0 mx-auto flex w-full flex-col gap-5 pt-6",
+          // The Servants tab matches /servants: same width and gutters as the servant browser.
+          activeTab === "tracker" ? "max-w-[1600px] px-4 sm:px-6 lg:px-8" : "max-w-7xl px-5 md:px-8"
+        )}
+      >
 
         {/* ── TRACKER TAB ─────────────────────────────────────────────────── */}
         {activeTab === "tracker" && (
           <>
-            {/* Summary card */}
-            <section className="rounded-xl border border-border bg-card/60 p-5">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total QP Needed</p>
-                  <p className="mt-1 text-2xl font-semibold text-foreground">{formatNumber(aggregate.qp)}</p>
-                </div>
-                <div className="w-full sm:w-48">
-                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Current QP
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={currentQpInput}
-                    onChange={(e) => handleCurrentQpChange(e.target.value)}
-                    className="w-full rounded-md border border-input bg-background px-2.5 py-2 text-sm text-foreground focus:border-ring focus:outline-none"
-                  />
-                  <p className="mt-1.5 text-xs text-muted-foreground">
-                    Remaining: <span className="text-foreground/80">{formatNumber(Math.max(0, aggregate.qp - currentQp))}</span>
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Overall Progress</span>
-                  <span className="text-xs font-medium text-foreground/70">{overallProgress.toFixed(1)}%</span>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                  <div className="h-full rounded-full bg-sky-500 transition-all duration-500" style={{ width: `${overallProgress}%` }} />
-                </div>
-              </div>
-            </section>
-
-            {/* Add servant button */}
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
-                {trackerState.servants.length} servant{trackerState.servants.length === 1 ? "" : "s"} · drag to reorder
-              </p>
-              <button
-                type="button"
-                onClick={() => { setSearchQuery(""); setIsSearchOpen(true) }}
-                className="flex h-8 items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 text-xs font-medium text-amber-400 hover:border-amber-500/50 hover:bg-amber-500/15 transition-all"
-              >
-                <svg className="size-3.5" fill="none" viewBox="0 0 16 16" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-                  <path d="M8 3v10M3 8h10" />
-                </svg>
-                Add Servant
-              </button>
-            </div>
-
-            {/* Servant list */}
-            <div className="grid gap-4">
-              {trackerState.servants.map((servant) => {
-                const summary = perServantSummaryById[String(servant.servantId)] ?? { progressPercent: 0, remainingCount: 0 }
-                const remainingCount = summary.remainingCount
-                const progress = Math.min(100, Math.max(0, summary.progressPercent))
-
-                return (
-                  <article
-                    key={servant.servantId}
-                    draggable
-                    onDragStart={() => setDraggedServantId(servant.servantId)}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={() => {
-                      if (!draggedServantId) return
-                      const nextState = materialTracker.reorderTrackedServants(
-                        moveBefore(trackerState.servants.map((e) => e.servantId), draggedServantId, servant.servantId)
-                      )
-                      setTrackerState(nextState)
-                      setDraggedServantId(null)
-                    }}
-                    onClick={() => router.push(`/track-materials/${servant.servantId}`)}
-                    className="group cursor-pointer rounded-xl border border-border bg-card/60 p-5 transition-all hover:bg-muted/30"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-4">
-                        {servant.portrait && (
-                          <Image src={servant.portrait} alt={servant.servantName} width={64} height={64} className="rounded-lg border border-border" />
-                        )}
-                        <div>
-                          <p className="text-base font-semibold text-foreground">{servant.servantName}</p>
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {servant.className}{" "}
-                            <span className={getStarColorClass(servant.rarity)}>{"★".repeat(servant.rarity)}</span>
-                          </p>
-                          <p className="mt-1.5 text-xs text-muted-foreground">
-                            Asc {servant.ascensionLevel >= 5 ? "Max" : servant.ascensionLevel} · Skills {formatSkillLevels(servant.skillLevels)} · Append {formatSkillLevels(servant.appendSkillLevels)}
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); handleRemoveServant(servant.servantId) }}
-                        className="rounded-md border border-border bg-transparent px-2.5 py-1.5 text-[11px] text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:border-destructive/40 hover:text-destructive"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    <div className="mt-4">
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                        <div className="h-full rounded-full bg-emerald-500 transition-all duration-500" style={{ width: `${progress}%` }} />
-                      </div>
-                      <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                        <span>{progress.toFixed(1)}% complete</span>
-                        <span>{remainingCount} material type{remainingCount === 1 ? "" : "s"} remaining</span>
-                      </div>
-                    </div>
-                  </article>
-                )
-              })}
-              {!trackerState.servants.length && (
-                <div className="rounded-xl border border-dashed border-border p-10 text-center">
-                  <p className="text-sm text-muted-foreground">No servants tracked yet.</p>
-                  <button
-                    type="button"
-                    onClick={() => { setSearchQuery(""); setIsSearchOpen(true) }}
-                    className="mt-3 text-xs text-primary transition-colors hover:text-primary/80 underline underline-offset-2"
-                  >
-                    Add your first servant
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* Servants: same browser as /servants, limited to tracked servants */}
+            <TrackedServantsBrowser
+              trackedServants={trackerState.servants}
+              summaryById={perServantSummaryById}
+              onRemove={handleRemoveServant}
+              onAdd={() => { setSearchQuery(""); setIsSearchOpen(true) }}
+            />
           </>
         )}
 
         {/* ── MATERIALS TAB ───────────────────────────────────────────────── */}
         {activeTab === "materials" && (
-          <section className="rounded-xl border border-border bg-card/60 p-5">
-            <div className="mb-4">
-              <h2 className="text-sm font-semibold text-foreground">Total Materials Needed</h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">Click a material to view details and edit owned quantity.</p>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {aggregate.materialsWithOwned.map((material) => (
-                <Link
-                  key={material.id}
-                  href={`/material/${material.id}`}
-                  className="group flex items-center gap-3 rounded-lg border border-border bg-background/40 p-3 transition-all hover:bg-muted/40"
-                >
-                  <Image src={material.icon} alt={material.name} width={28} height={28} className="rounded-md" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium text-foreground/90">{material.name}</p>
-                    <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
-                      <span>Need <span className="text-foreground/80">{formatNumber(material.amount)}</span></span>
-                      <span>·</span>
-                      <span className={material.remaining > 0 ? "text-red-400/60" : "text-emerald-400/60"}>
-                        {material.remaining > 0 ? `${formatNumber(material.remaining)} left` : "Complete"}
-                      </span>
-                    </div>
+          <>
+              {/* QP summary */}
+              <section className="rounded-xl border border-border bg-card/60 p-5">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total QP Needed</p>
+                    <p className="mt-1 text-2xl font-semibold text-foreground">{formatNumber(aggregate.qp)}</p>
                   </div>
-                  <svg className="size-3.5 flex-shrink-0 text-muted-foreground/60 transition-colors group-hover:text-foreground/80" fill="none" viewBox="0 0 16 16" stroke="currentColor" strokeWidth={1.75}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 4l4 4-4 4" />
-                  </svg>
-                </Link>
-              ))}
-              {!aggregate.materialsWithOwned.length && (
-                <p className="col-span-3 text-sm text-muted-foreground">No materials needed yet.</p>
-              )}
-            </div>
-          </section>
+                  <div className="w-full sm:w-48">
+                    <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      Current QP
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={currentQpInput}
+                      onChange={(e) => handleCurrentQpChange(e.target.value)}
+                      className="w-full rounded-md border border-input bg-background px-2.5 py-2 text-sm text-foreground focus:border-ring focus:outline-none"
+                    />
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      Remaining: <span className="text-foreground/80">{formatNumber(Math.max(0, aggregate.qp - currentQp))}</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Overall Progress</span>
+                    <span className="text-xs font-medium text-foreground/70">{overallProgress.toFixed(1)}%</span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-sky-500 transition-all duration-500" style={{ width: `${overallProgress}%` }} />
+                  </div>
+                </div>
+              </section>
+            <section className="rounded-xl border border-border bg-card/60 p-5">
+              <div className="mb-4">
+                <h2 className="text-sm font-semibold text-foreground">Total Materials Needed</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">Click a material to view details and edit owned quantity.</p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {aggregate.materialsWithOwned.map((material) => (
+                  <Link
+                    key={material.id}
+                    href={`/material/${material.id}`}
+                    className="group flex items-center gap-3 rounded-lg border border-border bg-background/40 p-3 transition-all hover:bg-muted/40"
+                  >
+                    <Image src={material.icon} alt={material.name} width={28} height={28} className="rounded-md" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-medium text-foreground/90">{material.name}</p>
+                      <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
+                        <span>Need <span className="text-foreground/80">{formatNumber(material.amount)}</span></span>
+                        <span>·</span>
+                        <span className={material.remaining > 0 ? "text-red-400/60" : "text-emerald-400/60"}>
+                          {material.remaining > 0 ? `${formatNumber(material.remaining)} left` : "Complete"}
+                        </span>
+                      </div>
+                    </div>
+                    <svg className="size-3.5 flex-shrink-0 text-muted-foreground/60 transition-colors group-hover:text-foreground/80" fill="none" viewBox="0 0 16 16" stroke="currentColor" strokeWidth={1.75}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 4l4 4-4 4" />
+                    </svg>
+                  </Link>
+                ))}
+                {!aggregate.materialsWithOwned.length && (
+                  <p className="col-span-3 text-sm text-muted-foreground">No materials needed yet.</p>
+                )}
+              </div>
+            </section>
+          </>
         )}
 
         {/* ── FARMING TAB ─────────────────────────────────────────────────── */}

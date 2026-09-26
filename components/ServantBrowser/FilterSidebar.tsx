@@ -51,6 +51,8 @@ interface FilterSidebarProps {
   setSort: (sort: ServantSort) => void
   searchQuery: string
   setSearchQuery: (query: string) => void
+  /** Hide the Collection group where every servant is already in it (Planning page). */
+  showCollection?: boolean
 }
 
 export function FilterSidebar({
@@ -62,6 +64,7 @@ export function FilterSidebar({
   setSort,
   searchQuery,
   setSearchQuery,
+  showCollection = true,
 }: FilterSidebarProps) {
   const options = useMemo(() => {
     const classNames = new Map<string, string>()
@@ -136,12 +139,14 @@ export function FilterSidebar({
           </Select>
         </label>
 
-        <ChipGroup
-          title="Collection"
-          options={COLLECTION_OPTIONS}
-          selected={filters.collection}
-          onToggle={(value) => toggle("collection", value)}
-        />
+        {showCollection ? (
+          <ChipGroup
+            title="Collection"
+            options={COLLECTION_OPTIONS}
+            selected={filters.collection}
+            onToggle={(value) => toggle("collection", value)}
+          />
+        ) : null}
         <ChipGroup title="Class" options={options.classes} selected={filters.classes} onToggle={(value) => toggle("classes", value)} />
         <ChipGroup title="Rarity" options={options.rarities} selected={filters.rarities} onToggle={(value) => toggle("rarities", value)} />
         <ChipGroup title="Attribute" options={options.attributes} selected={filters.attributes} onToggle={(value) => toggle("attributes", value)} />
