@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { Moon, Search, Settings, Sparkles, Sun } from "lucide-react"
 import { useEffect, useState } from "react"
 
-import { ServantSearch } from "@/components/ServantSearch"
+import { SiteSearch } from "@/components/SiteSearch"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 
@@ -83,7 +83,7 @@ export function NavBar() {
 
         <div className="ml-auto flex min-w-0 items-center gap-2">
           <div className="hidden w-[min(22rem,32vw)] lg:block">
-            <ServantSearch />
+            <SiteSearch />
           </div>
 
           <Popover open={mobileSearchOpen} onOpenChange={setMobileSearchOpen}>
@@ -97,7 +97,7 @@ export function NavBar() {
               </button>
             </PopoverTrigger>
             <PopoverContent align="end" sideOffset={8} className="w-[min(22rem,calc(100vw-2rem))] p-3">
-              <ServantSearch autoFocus inlineResults onNavigate={() => setMobileSearchOpen(false)} />
+              <SiteSearch autoFocus inlineResults onNavigate={() => setMobileSearchOpen(false)} />
             </PopoverContent>
           </Popover>
 
