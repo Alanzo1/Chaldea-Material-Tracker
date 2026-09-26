@@ -151,3 +151,15 @@ function uniqueName(name: string, taken: string[]) {
     if (free(candidate)) return candidate
   }
 }
+
+/** User-facing message for a failed profile action (local rule or database error code). */
+export function describeProfileError(error: unknown, name?: string) {
+  if (error instanceof ProfileError) return error.message
+  const { code, message } = (error ?? {}) as { code?: string; message?: string }
+  if (code === "23505") return `A profile named “${name ?? "that"}” already exists.`
+  if (code === "P0001" && message === "Profile limit reached") return `You can have up to ${MAX_PROFILES} profiles.`
+  if (code === "P0001" && message === "Cannot delete last profile") return "You can't delete your last profile."
+  if (code === "P0002") return "That profile no longer exists."
+  if (code === "22023") return "That name isn't valid. Use 1–40 characters."
+  return "Couldn't reach the server. Check your connection and try again."
+}
