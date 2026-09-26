@@ -6,6 +6,8 @@ The application uses Google OAuth or email/password authentication and private S
 
 Open the [project SQL editor](https://supabase.com/dashboard/project/vsrqiqsvwmvhvaiqvgnh/sql/new). Paste and run `supabase/migrations/202609250001_accounts.sql` once. It creates two private tables and the revision-checked save/read functions. Keep row-level security enabled. Do not add public read policies or direct client write grants.
 
+Then run `supabase/migrations/202609260001_game_profiles.sql` once. It adds game profiles (one progress row per FGO account, up to 10 per user, each with its own revision), copies every existing save into a profile named **Main**, and closes the old `save_user_progress` function so tabs running older code show **Not synced** instead of saving to the retired table. Run it before deploying the profiles release. The old `user_progress` table stays as a backup.
+
 The supplied publishable key supports application requests; it cannot install migrations or configure authentication. No service-role key is needed in the website.
 
 ## 2. Configure Google sign-in
@@ -40,7 +42,7 @@ Run the database migration before deploying the configured application. If the s
 - Go offline, edit progress, reload, reconnect, and choose **Sync now**. Unsynced state must stay visible until saved.
 - Sign out and into another account. Guest and each account's data must stay separate.
 
-`supabase/test-policies.sql` verifies two-user isolation, anonymous denial, direct-write denial, invalid-save rejection, and revision conflicts. Run it after the migration in an isolated PostgreSQL/Supabase test database. It inserts two dummy Auth users and rolls back all fixtures. Never use production accounts for testing.
+`supabase/test-policies.sql` verifies two-user isolation, anonymous denial, direct-write denial, invalid-save rejection, per-profile revision conflicts, name rules, the 10-profile cap, refusing to delete the last profile, and the **Main** backfill. Run it after the migration in an isolated PostgreSQL/Supabase test database. It inserts two dummy Auth users and rolls back all fixtures. Never use production accounts for testing.
 
 ## Save behavior and recovery
 

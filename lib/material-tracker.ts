@@ -75,10 +75,17 @@ function readJson<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback
   try { return JSON.parse(window.localStorage.getItem(key) ?? "null") ?? fallback } catch { return fallback }
 }
+// Guest progress is stored per game profile; the account layer tells the tracker which key is active.
+let guestKeyResolver: () => string = () => TRACKED_MATERIALS_STATE_KEY
+export function setGuestKeyResolver(resolve: () => string) { guestKeyResolver = resolve }
+function guestKey() {
+  try { return guestKeyResolver() } catch { return TRACKED_MATERIALS_STATE_KEY }
+}
+
 function persistStateNow() {
   if (!inMemoryState || typeof window === "undefined") return
   if (persistence) persistence(inMemoryState)
-  else window.localStorage.setItem(TRACKED_MATERIALS_STATE_KEY, JSON.stringify(inMemoryState))
+  else window.localStorage.setItem(guestKey(), JSON.stringify(inMemoryState))
 }
 
 // Switch the active store without copying an account's progress into guest storage.
@@ -88,13 +95,15 @@ export function activateTracker(state: TrackedMaterialsState, save: ((state: Tra
   inMemoryState = state
   notifyTracker()
 }
-export function readGuestProgress(): TrackedMaterialsState {
-  const raw = readJson<Partial<TrackedMaterialsState>>(TRACKED_MATERIALS_STATE_KEY, {})
+export function readGuestProgress(key = guestKey()): TrackedMaterialsState {
+  const raw = readJson<Partial<TrackedMaterialsState>>(key, {})
+  // Only the pre-profiles save kept QP under its own key.
+  const legacyQp = key === TRACKED_MATERIALS_STATE_KEY ? readJson("trackerCurrentQp", 0) : 0
   return {
     version: 1,
     servants: Array.isArray(raw.servants) ? raw.servants.map(normalizeServantEntry).filter(Boolean) as TrackedServantEntry[] : [],
     ownedByMaterialId: normalizeOwnedMap(raw.ownedByMaterialId),
-    qp: Math.max(0, toNumber(raw.qp ?? readJson("trackerCurrentQp", 0))),
+    qp: Math.max(0, toNumber(raw.qp ?? legacyQp)),
   }
 }
 export function setCurrentQp(qp: number) {

@@ -33,21 +33,36 @@ await page.reload()
 await page.locator('[aria-busy=false]').waitFor()
 await page.waitForFunction(()=>document.querySelector('input[id^=owned-]')?.value==='99')
 assert.equal(await page.getByLabel('Quantity owned').inputValue(),'99')
+// Guest profiles: a new profile starts empty, switching back restores Main, and the choice survives reload.
+await page.getByRole('button',{name:/^Profile:/}).click()
+await page.getByRole('button',{name:'New profile'}).click()
+await page.getByLabel('New profile name').fill('JP alt')
+await page.getByRole('button',{name:'Add',exact:true}).click()
+await page.waitForFunction(()=>document.querySelector('input[id^=owned-]')?.value==='0')
+await page.getByLabel('Quantity owned').fill('7')
+await page.getByRole('button',{name:'Save',exact:true}).click()
+await page.reload()
+await page.locator('[aria-busy=false]').waitFor()
+await page.waitForFunction(()=>document.querySelector('input[id^=owned-]')?.value==='7')
+await page.getByRole('button',{name:/^Profile:/}).click()
+await page.getByRole('list',{name:'Profiles'}).getByRole('button',{name:'Main',exact:true}).click()
+await page.waitForFunction(()=>document.querySelector('input[id^=owned-]')?.value==='99')
+assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('chaldea:guest-profiles')).profiles.map(p=>p.name)),['Main','JP alt'])
 await page.goto(`${base}/account?error=sign-in`)
 await page.getByRole('alert').filter({hasText:'Sign-in was canceled'}).waitFor()
 await page.route(`${supabaseUrl}/auth/v1/settings`, route=>route.fulfill({json:{external:{google:false}}}))
 await page.getByRole('button',{name:'Continue with Google'}).click()
 await page.getByRole('alert').filter({hasText:'Google sign-in is not enabled yet'}).waitFor()
 assert.deepEqual(errors,[])
-console.log('PASS guest account desktop/mobile, theme persistence, inventory persistence, recoverable auth error')
+console.log('PASS guest account desktop/mobile, theme persistence, inventory persistence, guest profiles, recoverable auth error')
 await ctx.close()
 } finally { await browser.close() }
 })
 
-test('authenticated account browser flows', async () => {
+test('authenticated game profiles: import, switch, create, rename, delete, offline, conflict, remote delete', async () => {
 const browser = await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL || undefined,headless:true})
 try {
-const ctx = await browser.newContext({viewport:{width:390,height:844}})
+const ctx = await browser.newContext({viewport:{width:1280,height:900}})
 const page = await ctx.newPage()
 const errors=[]
 page.on('pageerror',e=>errors.push(e.message))
@@ -56,19 +71,42 @@ const user={id,aud:'authenticated',role:'authenticated',email:'test@example.test
 const token = [Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url'),Buffer.from(JSON.stringify({sub:id,role:'authenticated',exp:Math.floor(Date.now()/1000)+3600})).toString('base64url'),'test'].join('.')
 const session={access_token:token,refresh_token:'test-refresh',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user}
 const cookie='base64-'+Buffer.from(JSON.stringify(session)).toString('base64url')
-let cloud={document:{version:1,qp:400,servants:[],ownedByMaterialId:{'6505':4}},revision:1,display_name:'Cloud Master',theme:'dark'}
-let writes=0
-let offline=false
+// In-memory stand-in for the profile RPCs, with the same error codes as the migration.
+const cloud={settings:{display_name:'Cloud Master',theme:'dark'},profiles:[{id:'main-id',name:'Main',revision:1,document:{version:1,qp:400,servants:[],ownedByMaterialId:{'6505':4}}}]}
+let writes=0, offline=false, nextId=1
+const fail=(code,message)=>({status:400,json:{code,message,details:null,hint:null}})
+const byId=pid=>cloud.profiles.find(p=>p.id===pid)
 await page.route(`${supabaseUrl}/**`,async route=>{
  const url=route.request().url()
- if(url.includes('read_user_save')) return route.fulfill({json:cloud})
- if(url.includes('save_user_progress')) {
-  if(offline) return route.fulfill({status:503,json:{message:'Simulated outage'}})
+ const rpc=url.match(/\/rpc\/(\w+)/)?.[1]
+ const body=rpc ? route.request().postDataJSON() ?? {} : {}
+ if(rpc && offline && rpc!=='read_progress_profiles') return route.fulfill({status:503,json:{message:'Simulated outage'}})
+ if(rpc==='read_progress_profiles') return route.fulfill({json:{settings:cloud.settings,profiles:cloud.profiles}})
+ if(rpc==='save_account_settings') { cloud.settings={display_name:body.display_name,theme:body.theme}; return route.fulfill({status:204}) }
+ if(rpc==='create_progress_profile') {
+  const name=body.profile_name.trim()
+  if(cloud.profiles.length>=10) return route.fulfill(fail('P0001','Profile limit reached'))
+  if(cloud.profiles.some(p=>p.name.toLowerCase()===name.toLowerCase())) return route.fulfill(fail('23505','duplicate key'))
+  const row={id:`p${nextId++}`,name,revision:1,document:body.progress_document}
+  cloud.profiles.push(row)
+  return route.fulfill({json:{id:row.id,name:row.name,revision:1}})
+ }
+ if(rpc==='save_progress_profile') {
   writes++
-  const data=route.request().postDataJSON()
-  if(data.expected_revision!==cloud.revision) return route.fulfill({status:409,json:{code:'40001',message:'Save conflict'}})
-  cloud={document:data.progress_document,revision:cloud.revision+1,display_name:data.profile_name,theme:data.profile_theme}
-  return route.fulfill({json:cloud.revision})
+  const row=byId(body.profile_id)
+  if(!row) return route.fulfill(fail('P0002','Profile not found'))
+  if(row.revision!==body.expected_revision) return route.fulfill(fail('40001','Save conflict'))
+  row.document=body.progress_document; row.revision++
+  return route.fulfill({json:row.revision})
+ }
+ if(rpc==='rename_progress_profile') {
+  const row=byId(body.profile_id)
+  if(!row) return route.fulfill(fail('P0002','Profile not found'))
+  row.name=body.profile_name.trim(); return route.fulfill({status:204})
+ }
+ if(rpc==='delete_progress_profile') {
+  if(cloud.profiles.length<=1) return route.fulfill(fail('P0001','Cannot delete last profile'))
+  cloud.profiles=cloud.profiles.filter(p=>p.id!==body.profile_id); return route.fulfill({status:204})
  }
  if(url.includes('/logout')) return route.fulfill({status:204})
  if(url.includes('/user')) return route.fulfill({json:user})
@@ -82,44 +120,114 @@ await page.addInitScript(({cookie,cookieName})=>{
  sessionStorage.setItem('test-seeded','true')
  }
 },{cookie,cookieName})
+const owned=()=>page.getByLabel('Quantity owned').inputValue()
+const settled=()=>page.getByRole('status').filter({hasText:/^Saved$/}).first().waitFor()
+const profileMenu=()=>page.getByRole('button',{name:/^Profile:/})
+const pick=async name=>{ await profileMenu().click(); await page.getByRole('list',{name:'Profiles'}).getByRole('button',{name,exact:true}).click() }
+
+// Sign-in import is offered, and declining leaves the cloud untouched.
 await page.goto(`${base}/account`)
-await page.getByRole('dialog').waitFor()
+await page.getByRole('dialog').filter({hasText:'Add your 1 device profile to your account?'}).waitFor()
+await page.getByRole('button',{name:'Not now'}).click()
 assert.equal(writes,0)
-await page.getByRole('button',{name:'Keep cloud progress'}).click()
+assert.equal(cloud.profiles.length,1)
+
+// Account settings save on their own.
 await page.getByLabel('Display name').fill('Updated Master')
 await page.getByRole('button',{name:'Save name'}).click()
-await page.getByRole('status').filter({hasText:/^Saved$/}).waitFor()
-assert.equal(cloud.display_name,'Updated Master')
-assert.equal(cloud.document.qp,400)
-await page.getByRole('button',{name:'Import guest progress',exact:true}).click()
-await page.getByRole('dialog').getByRole('button',{name:'Import guest progress'}).click()
-await page.getByRole('status').filter({hasText:/^Saved$/}).waitFor()
-assert.equal(cloud.document.qp,900)
-assert.equal(cloud.document.ownedByMaterialId['6505'],99)
+await page.waitForTimeout(300)
+assert.equal(cloud.settings.display_name,'Updated Master')
+
+// Importing adds the device profile next to Main, renamed to avoid the clash, without replacing Main.
+await page.getByRole('button',{name:'Add device profiles'}).click()
+await page.getByRole('dialog').getByRole('button',{name:'Add 1 profile'}).click()
+await page.getByRole('status').filter({hasText:'Added 1 profile from this device.'}).waitFor()
+assert.deepEqual(cloud.profiles.map(p=>p.name),['Main','Main (device)'])
+assert.equal(cloud.profiles[0].document.qp,400)
+assert.equal(cloud.profiles[1].document.qp,900)
+
+// Switching loads each profile's own inventory, and survives a reload.
+await page.goto(`${base}/material/6505`)
+await page.locator('[aria-busy=false]').waitFor()
+assert.equal(await owned(),'4')
+await pick('Main (device)')
+await page.waitForFunction(()=>document.querySelector('input[id^=owned-]')?.value==='99')
+await page.reload()
+await page.locator('[aria-busy=false]').waitFor()
+await page.waitForFunction(()=>document.querySelector('input[id^=owned-]')?.value==='99')
+assert.equal(await profileMenu().getAttribute('aria-label'),'Profile: Main (device)')
+
+// Creating a profile switches to it empty; saving writes only to that profile.
+await profileMenu().click()
+await page.getByRole('button',{name:'New profile'}).click()
+await page.getByLabel('New profile name').fill('main')
+await page.getByRole('button',{name:'Add',exact:true}).click()
+await page.getByRole('alert').filter({hasText:'already exists'}).waitFor()
+await page.getByLabel('New profile name').fill('JP alt')
+await page.getByRole('button',{name:'Add',exact:true}).click()
+await page.waitForFunction(()=>document.querySelector('input[id^=owned-]')?.value==='0')
+await page.getByLabel('Quantity owned').fill('5')
+await page.getByRole('button',{name:'Save',exact:true}).click()
+await page.waitForTimeout(1200)
+const jp=cloud.profiles.find(p=>p.name==='JP alt')
+assert.equal(jp.document.ownedByMaterialId['6505'],5)
+assert.equal(cloud.profiles.find(p=>p.name==='Main').document.ownedByMaterialId['6505'],4)
+await pick('Main')
+await page.waitForFunction(()=>document.querySelector('input[id^=owned-]')?.value==='4')
+
+// Rename and delete from Account.
+await page.goto(`${base}/account`)
+await page.locator('[aria-busy=false]').waitFor()
+await page.getByRole('button',{name:'Rename JP alt'}).click()
+await page.getByLabel('Rename JP alt').fill('JP')
+await page.getByRole('button',{name:'Save',exact:true}).click()
+await page.getByText('JP',{exact:true}).waitFor()
+assert.equal(jp.name,'JP')
+await page.getByRole('button',{name:'Delete Main (device)'}).click()
+await page.getByRole('button',{name:'Delete profile'}).click()
+await page.getByRole('button',{name:'Delete Main (device)'}).waitFor({state:'detached'})
+assert.deepEqual(cloud.profiles.map(p=>p.name),['Main','JP'])
+
+// Offline edits stay in that profile's device copy until synced.
+await pick('JP')
+await settled()
 offline=true
-await page.getByLabel('Display name').fill('Saved after retry')
-await page.getByRole('button',{name:'Save name'}).click()
-await page.getByRole('status').filter({hasText:/^Not synced$/}).waitFor()
-assert.equal(await page.evaluate(id=>JSON.parse(localStorage.getItem(`chaldea:account:${id}`)).dirty,id),true)
+await page.goto(`${base}/material/6505`)
+await page.locator('[aria-busy=false]').waitFor()
+await page.waitForFunction(()=>document.querySelector('input[id^=owned-]')?.value==='5')
+await page.getByLabel('Quantity owned').fill('6')
+await page.getByRole('button',{name:'Save',exact:true}).click()
+await page.waitForFunction(({id,pid})=>JSON.parse(localStorage.getItem(`chaldea:account:${id}:profile:${pid}`) ?? '{}').dirty===true,{id,pid:jp.id})
 offline=false
-await page.getByRole('button',{name:'Sync now'}).click()
-await page.getByRole('status').filter({hasText:/^Saved$/}).waitFor()
-assert.equal(cloud.display_name,'Saved after retry')
-// A second device saved after this tab's last load.
-cloud={...cloud,revision:cloud.revision+1,document:{...cloud.document,qp:1234}}
-await page.getByLabel('Display name').fill('Conflict Master')
-await page.getByRole('button',{name:'Save name'}).click()
-await page.getByRole('dialog').filter({hasText:'Choose which progress to keep'}).waitFor()
+await page.goto(`${base}/account`)
+await settled()
+await page.waitForTimeout(1200)
+assert.equal(jp.document.ownedByMaterialId['6505'],6)
+
+// A save clash on one profile asks which copy to keep, naming the profile.
+jp.revision++; jp.document={...jp.document,qp:1234}
+await page.goto(`${base}/material/6505`)
+await page.locator('[aria-busy=false]').waitFor()
+jp.revision++
+await page.getByLabel('Quantity owned').fill('7')
+await page.getByRole('button',{name:'Save',exact:true}).click()
+await page.getByRole('dialog').filter({hasText:'Choose which “JP” progress to keep'}).waitFor()
 await page.getByRole('button',{name:'Use cloud progress',exact:true}).click()
-await page.getByRole('status').filter({hasText:/^Saved$/}).waitFor()
-assert.equal(await page.getByLabel('Display name').inputValue(),'Saved after retry')
-const backupCount=await page.evaluate(()=>Object.keys(localStorage).filter(k=>k.includes(':recovery:')).length)
-assert.ok(backupCount>=3)
+await page.waitForFunction(()=>document.querySelector('input[id^=owned-]')?.value==='6')
+
+// Deleting the active profile on another device moves this tab to the first profile.
+cloud.profiles=cloud.profiles.filter(p=>p.id!==jp.id)
+await page.evaluate(()=>window.dispatchEvent(new Event('focus')))
+await page.getByRole('status').filter({hasText:'“JP” was deleted on another device.'}).waitFor()
+await page.waitForFunction(()=>document.querySelector('input[id^=owned-]')?.value==='4')
+
+// Sign out returns to guest progress, untouched by the account.
+await page.goto(`${base}/account`)
 await page.getByRole('button',{name:'Sign out',exact:true}).click()
 await page.getByRole('button',{name:'Continue with Google'}).waitFor()
 assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('trackedMaterialsStateV1')).ownedByMaterialId['6505']),99)
 assert.deepEqual(errors,[])
-console.log('PASS mocked authenticated mobile UI: import decline/accept, profile autosave, conflict resolution/recovery, sign-out guest isolation')
+console.log('PASS mocked authenticated game profiles')
 } finally { await browser.close() }
 })
 

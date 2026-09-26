@@ -2,10 +2,11 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Moon, Search, Settings, Sparkles, Sun, UserRound } from "lucide-react"
+import { Moon, Search, Settings, Sparkles, Sun } from "lucide-react"
 import { useState } from "react"
 
 import { useAccount } from "@/components/account/AccountProvider"
+import { ProfileMenu } from "@/components/account/ProfileMenu"
 import { SiteSearch } from "@/components/SiteSearch"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
@@ -36,10 +37,9 @@ function NavLink({ href, label }: { href: string; label: string }) {
 
 export function NavBar() {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
-  const pathname = usePathname()
   const account = useAccount()
-  const theme = account.profile.theme
-  const toggleTheme = () => account.editProfile({ ...account.profile, theme: theme === "dark" ? "light" : "dark" })
+  const theme = account.settings.theme
+  const toggleTheme = () => account.editSettings({ ...account.settings, theme: theme === "dark" ? "light" : "dark" })
 
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/90">
@@ -64,11 +64,7 @@ export function NavBar() {
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          <Link href={`/account?next=${encodeURIComponent(pathname)}`} aria-label="Account" title={account.status} className="flex h-11 shrink-0 items-center gap-2 rounded-md border border-border px-3 text-sm">
-            <UserRound className="size-4" aria-hidden="true" />
-            <span className="hidden xl:block">{account.user ? account.profile.displayName || "Account" : "Sign in"}</span>
-            {account.user && <span className="hidden text-xs text-muted-foreground 2xl:block" aria-live="polite">{account.status}</span>}
-          </Link>
+          <ProfileMenu />
           <div className="hidden w-[min(22rem,32vw)] lg:block">
             <SiteSearch />
           </div>
