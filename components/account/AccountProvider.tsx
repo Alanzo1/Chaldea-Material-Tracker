@@ -52,11 +52,11 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const passwordPage = usePathname() === "/account/password"
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<PrivateProfile>({ displayName: "", theme: "dark" })
-  const [ready, setReady] = useState(false)
+  // Guests are ready immediately; only a signed-in account waits for its save.
+  const [ready, setReady] = useState(true)
   const [error, setError] = useState("")
   const [importOffered, setImportOffered] = useState(false)
   const [guest, setGuest] = useState<ReturnType<typeof toDocument> | null>(null)
-  const [viewKey, setViewKey] = useState(0)
   const [, render] = useState(0)
   const engine = useRef<CloudSync | null>(null)
   const sessionEpoch = useRef(0)
@@ -73,8 +73,9 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       const epoch = ++sessionEpoch.current
       const valid = () => alive && epoch === sessionEpoch.current
       engine.current?.dispose(); engine.current = null
-      activateTracker({ version: 1, servants: [], ownedByMaterialId: {}, qp: 0 }, () => {})
-      setUser(nextUser); setReady(false); setError(""); setImportOffered(false)
+      // Hide the previous store while an account loads; guests switch straight to device progress.
+      if (nextUser) activateTracker({ version: 1, servants: [], ownedByMaterialId: {}, qp: 0 }, () => {})
+      setUser(nextUser); setReady(!nextUser); setError(""); setImportOffered(false)
       try {
         const guestState = readGuestProgress()
         const guestDocument = toDocument(guestState)
@@ -83,7 +84,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           activateTracker(guestState, null)
           const theme = guestTheme()
           setProfile({ displayName: "", theme }); applyTheme(theme)
-          setViewKey(v => v + 1); setReady(true)
+          setReady(true)
           return
         }
         const initial = readCache(nextUser.id)
@@ -96,7 +97,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
           if (!valid() || !stillCurrent()) return
           activateTracker(state, persist)
           setProfile(snapshot.profile); applyTheme(snapshot.profile.theme)
-          setViewKey(v => v + 1); setReady(true)
+          setReady(true)
         }
         const sessionToken = async () => {
           const { data, error } = await client.auth.getSession()
@@ -200,14 +201,15 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         activateTracker(state, (state) => sync.edit(toDocument(state), sync.current!.profile))
         sync.edit(toDocument(state), profile)
         localStorage.setItem(`${cacheKey(user.id)}:import-seen`, "true")
-        setImportOffered(false); setViewKey(v => v + 1)
+        setImportOffered(false)
       } catch { setError("Could not preserve the existing save. Free device storage and retry.") }
     },
   }
   return <AccountContext.Provider value={value}>
     {value.error && <div role="alert" className="border-b border-amber-500/40 bg-amber-500/10 p-3 text-center text-sm">{value.error} <button className="underline" onClick={value.retry}>Retry</button></div>}
     {!ready && <div className="p-4 text-center" role="status">{value.error ? "Your progress could not be loaded." : "Loading your progress…"}{user && <button className="ml-3 underline" onClick={() => void value.signOut()}>Sign out</button>}</div>}
-    <div key={`${user?.id ?? "guest"}:${passwordPage ? "password" : viewKey}`} inert={!ready && !passwordPage} aria-busy={!ready && !passwordPage} className={!ready && !passwordPage ? "opacity-50" : undefined}>{children}</div>
+    {/* Tracker readers subscribe to store swaps, so the page never needs a remount. */}
+    <div inert={!ready && !passwordPage} aria-busy={!ready && !passwordPage} className={!ready && !passwordPage ? "opacity-50" : undefined}>{children}</div>
     {!passwordPage && <SaveChoice />}
   </AccountContext.Provider>
 }
