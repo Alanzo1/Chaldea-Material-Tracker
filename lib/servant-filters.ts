@@ -129,30 +129,3 @@ export function sortServants<T extends FilterableServant>(servants: T[], sort: S
 export function countActiveFilters(filters: ServantFilters) {
   return Object.values(filters).reduce((total, values) => total + values.length, 0)
 }
-
-function searchRank(servant: FilterableServant, query: string) {
-  const name = lower(servant.name)
-  if (name.startsWith(query)) return 0
-  if (name.split(/[^a-z0-9]+/).some((word) => word.startsWith(query))) return 1
-  if (name.includes(query)) return 2
-  if (lower(servant.className).includes(query)) return 3
-  return -1
-}
-
-/** Quick-search results for the navbar: best matches first, capped at `limit`. */
-export function searchServants<T extends FilterableServant>(servants: T[], query: string, limit = 8): T[] {
-  const search = query.trim().toLowerCase()
-  if (!search) return []
-
-  return servants
-    .map((servant) => ({ servant, rank: searchRank(servant, search) }))
-    .filter((entry) => entry.rank !== -1)
-    .sort(
-      (a, b) =>
-        a.rank - b.rank ||
-        a.servant.name.length - b.servant.name.length ||
-        a.servant.id - b.servant.id
-    )
-    .slice(0, limit)
-    .map((entry) => entry.servant)
-}

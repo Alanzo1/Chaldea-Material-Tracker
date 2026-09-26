@@ -6,7 +6,7 @@ import { Moon, Search, Settings, Sparkles, Sun, UserRound } from "lucide-react"
 import { useState } from "react"
 
 import { useAccount } from "@/components/account/AccountProvider"
-import { ServantSearch } from "@/components/ServantSearch"
+import { SiteSearch } from "@/components/SiteSearch"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 
@@ -70,7 +70,7 @@ export function NavBar() {
             {account.user && <span className="hidden text-xs text-muted-foreground 2xl:block" aria-live="polite">{account.status}</span>}
           </Link>
           <div className="hidden w-[min(22rem,32vw)] lg:block">
-            <ServantSearch />
+            <SiteSearch />
           </div>
 
           <Popover open={mobileSearchOpen} onOpenChange={setMobileSearchOpen}>
@@ -84,7 +84,7 @@ export function NavBar() {
               </button>
             </PopoverTrigger>
             <PopoverContent align="end" sideOffset={8} className="w-[min(22rem,calc(100vw-2rem))] p-3">
-              <ServantSearch autoFocus inlineResults onNavigate={() => setMobileSearchOpen(false)} />
+              <SiteSearch autoFocus inlineResults onNavigate={() => setMobileSearchOpen(false)} />
             </PopoverContent>
           </Popover>
 
