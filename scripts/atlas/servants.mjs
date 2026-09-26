@@ -1,3 +1,4 @@
+import { originalName } from "./names.mjs"
 function capitalizeFirstLetter(val) {
   return String(val).charAt(0).toUpperCase() + String(val).slice(1)
 }
@@ -210,10 +211,62 @@ function collectEffects(servant) {
   return { buffs: [...buffSet], debuffs: [...debuffSet] }
 }
 
-export function buildServantsIndex(servants) {
-  return (Array.isArray(servants) ? servants : [])
+// Atlas's English JP export leaves buff names and popup text in Japanese. The same buff and
+// function ids carry English names in NA, so JP filter labels are taken from there.
+export function buildEffectNameMaps(servants) {
+  const buff = new Map()
+  const func = new Map()
+  for (const servant of Array.isArray(servants) ? servants : []) {
+    for (const source of [...(servant.skills ?? []), ...(servant.noblePhantasms ?? [])]) {
+      for (const f of source.functions ?? []) {
+        if (f.funcId != null && f.funcPopupText && !func.has(f.funcId)) func.set(f.funcId, f.funcPopupText)
+        for (const b of f.buffs ?? []) if (b?.id != null && b.name && !buff.has(b.id)) buff.set(b.id, b.name)
+      }
+    }
+  }
+  return { buff, func }
+}
+
+const effectSources = (servant) => [...(servant.skills ?? []), ...(servant.noblePhantasms ?? [])]
+
+// Japanese text → English, learned from ids both regions share. Covers JP-only ids of known buffs.
+function learnJapaneseNames(servants, names) {
+  const byJapanese = new Map()
+  for (const servant of servants) {
+    for (const source of effectSources(servant)) {
+      for (const f of source.functions ?? []) {
+        const popup = names.func.get(f.funcId)
+        if (popup && f.funcPopupText && !byJapanese.has(f.funcPopupText)) byJapanese.set(f.funcPopupText, popup)
+        for (const b of f.buffs ?? []) {
+          const english = names.buff.get(b?.id)
+          if (english && b.name && !byJapanese.has(b.name)) byJapanese.set(b.name, english)
+        }
+      }
+    }
+  }
+  return byJapanese
+}
+
+function applyEffectNames(servant, names, byJapanese) {
+  const english = (map, id, text) => map.get(id) ?? byJapanese.get(text) ?? text
+  const translate = (source) => ({
+    ...source,
+    functions: (source.functions ?? []).map((f) => ({
+      ...f,
+      funcPopupText: english(names.func, f.funcId, f.funcPopupText),
+      buffs: (f.buffs ?? []).map((b) => ({ ...b, name: english(names.buff, b?.id, b?.name) })),
+    })),
+  })
+  return { ...servant, skills: (servant.skills ?? []).map(translate), noblePhantasms: (servant.noblePhantasms ?? []).map(translate) }
+}
+
+export function buildServantsIndex(servants, effectNames) {
+  const list = Array.isArray(servants) ? servants : []
+  const byJapanese = effectNames ? learnJapaneseNames(list, effectNames) : null
+  return list
     .filter((servant) => servant.extraAssets?.faces?.ascension?.["1"])
-    .map((servant) => {
+    .map((original) => {
+      const servant = effectNames ? applyEffectNames(original, effectNames, byJapanese) : original
       const traitNames = (servant.traits ?? [])
         .map((trait) => String(trait?.name ?? ""))
         .filter(Boolean)
@@ -234,6 +287,7 @@ export function buildServantsIndex(servants) {
       return {
         id: servant.id,
         name: servant.name,
+        ...originalName(servant),
         className: capitalizeFirstLetter(servant.className),
         attribute: toTitleCase(servant.attribute),
         rarity: servant.rarity,
@@ -284,6 +338,7 @@ export function trimServantDetail(servant) {
       costume: charaGraph.costume ?? {},
     },
   }
+  Object.assign(detail, originalName(servant))
   detail.portrait = faces["1"] ?? faces[1] ?? null
   // Only costume names from the lore profile (keyed like charaGraph.costume); the rest of the lore is dropped.
   detail.costumeNames = Object.fromEntries(

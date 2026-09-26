@@ -30,9 +30,15 @@ jobs:
       - name: Build static data
         run: npm run data:refresh
 
+      # JP must not block the NA refresh: a failure keeps the previous JP data.
+      - name: Build static data (JP)
+        id: jp
+        continue-on-error: true
+        run: npm run data:refresh:jp
+
       - name: Commit if changed
         run: |
-          git add -A public/data
+          git add -A public/data public/data-jp
           if git diff --cached --quiet; then
             echo "Atlas data unchanged."
             exit 0

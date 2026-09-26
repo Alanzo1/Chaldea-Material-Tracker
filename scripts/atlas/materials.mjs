@@ -1,3 +1,4 @@
+import { originalName } from "./names.mjs"
 const UPGRADE_USES = ["skill", "appendSkill", "ascension", "costume"]
 const DEFAULT_CATEGORY = "Material"
 
@@ -30,6 +31,7 @@ export function buildMaterialsIndex(items) {
     .map((item) => ({
       id: Number(item.id ?? 0),
       name: String(item.name ?? "").trim(),
+      ...originalName(item),
       icon: String(item.icon ?? "").trim(),
       ...splitItemDetail(item.detail),
       type: String(item.type ?? ""),
