@@ -1,7 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import Link from "next/link"
+import { RegionLink as Link } from "@/components/RegionLink"
 import Image from "next/image"
 import type { ReactNode } from "react"
 import { useEffect, useMemo, useState } from "react"

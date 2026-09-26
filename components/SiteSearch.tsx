@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import type { MaterialIndexEntry } from "@/lib/atlas-types"
 import { flattenSearchResults, searchAll } from "@/lib/global-search"
 import { useFreeQuests } from "@/lib/use-free-quests"
+import { useDataRegion } from "@/lib/data-region"
 import { useStaticJson } from "@/lib/use-static-json"
 import { cn } from "@/lib/utils"
 
@@ -28,7 +29,8 @@ const GROUP_LABELS = { servant: "Servants", material: "Materials", quest: "Free 
 export function SiteSearch({ autoFocus, inlineResults = false, onNavigate }: SiteSearchProps) {
   const router = useRouter()
   const { servants } = useServants()
-  const { data: materials } = useStaticJson("/data/materials-index.json", NO_MATERIALS)
+  const { base, href } = useDataRegion()
+  const { data: materials } = useStaticJson(`${base}/materials-index.json`, NO_MATERIALS)
   const { quests } = useFreeQuests()
   const listId = useId()
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -44,11 +46,13 @@ export function SiteSearch({ autoFocus, inlineResults = false, onNavigate }: Sit
   const optionId = (index: number) => `${listId}-${results[index].kind}-${results[index].key}`
 
   const hrefOf = (result: (typeof results)[number]) =>
-    result.kind === "servant"
-      ? `/servantpage/${result.key}`
-      : result.kind === "material"
-        ? `/material/${result.key}`
-        : `/free-quests/${result.key}`
+    href(
+      result.kind === "servant"
+        ? `/servantpage/${result.key}`
+        : result.kind === "material"
+          ? `/material/${result.key}`
+          : `/free-quests/${result.key}`
+    )
 
   const goTo = (index: number) => {
     const result = results[index]

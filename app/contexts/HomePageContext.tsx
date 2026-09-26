@@ -1,5 +1,6 @@
 "use client"
 
+import { useDataRegion } from "@/lib/data-region"
 import { createContext, useContext, useState } from "react"
 
 import type { ServantIndexEntry } from "@/lib/atlas-types"
@@ -25,7 +26,8 @@ interface ServantContextValue {
 const ServantContext = createContext<ServantContextValue | null>(null)
 
 export function ServantProvider({ children }: { children: React.ReactNode }) {
-  const { data: servants, status: servantsStatus } = useStaticJson("/data/servants-index.json", NO_SERVANTS)
+  const { base } = useDataRegion()
+  const { data: servants, status: servantsStatus } = useStaticJson(`${base}/servants-index.json`, NO_SERVANTS)
   const [filters, setFilters] = useState<ServantFilters>(EMPTY_FILTERS)
   const [sort, setSort] = useState<ServantSort>("default")
   const [searchQuery, setSearchQuery] = useState("")

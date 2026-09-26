@@ -7,23 +7,25 @@ import { useState } from "react"
 
 import { useAccount } from "@/components/account/AccountProvider"
 import { ProfileMenu } from "@/components/account/ProfileMenu"
+import { RegionLink } from "@/components/RegionLink"
+import { RegionSwitch } from "@/components/RegionSwitch"
 import { SiteSearch } from "@/components/SiteSearch"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { parseSitePath, type SiteSection } from "@/lib/region"
 import { cn } from "@/lib/utils"
 
-const navItems = [
-  { href: "/servants", label: "Servants" },
-  { href: "/items", label: "Items" },
-  { href: "/free-quests", label: "Free Quests" },
-  { href: "/track-materials", label: "Planning" },
+const navItems: { href: string; section: SiteSection; label: string }[] = [
+  { href: "/servants", section: "servants", label: "Servants" },
+  { href: "/items", section: "items", label: "Items" },
+  { href: "/free-quests", section: "free-quests", label: "Free Quests" },
+  { href: "/track-materials", section: "track-materials", label: "Planning" },
 ]
 
-function NavLink({ href, label }: { href: string; label: string }) {
-  const pathname = usePathname()
-  const isActive = href === "/" ? pathname === href : pathname.startsWith(href)
+function NavLink({ href, section, label }: { href: string; section: SiteSection; label: string }) {
+  const isActive = parseSitePath(usePathname() ?? "/").section === section
 
   return (
-    <Link
+    <RegionLink
       href={href}
       className={cn(
         "flex h-11 shrink-0 items-center rounded-md px-2.5 text-sm sm:px-4 font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
@@ -31,7 +33,7 @@ function NavLink({ href, label }: { href: string; label: string }) {
       )}
     >
       {label}
-    </Link>
+    </RegionLink>
   )
 }
 
@@ -59,11 +61,12 @@ export function NavBar() {
 
         <nav aria-label="Primary navigation" className="flex min-w-0 items-center gap-1 overflow-x-auto [scrollbar-width:none]">
           {navItems.map((item) => (
-            <NavLink key={`${item.label}-${item.href}`} href={item.href} label={item.label} />
+            <NavLink key={item.section} {...item} />
           ))}
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
+          <RegionSwitch />
           <ProfileMenu />
           <div className="hidden w-[min(22rem,32vw)] lg:block">
             <SiteSearch />

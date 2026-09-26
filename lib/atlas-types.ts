@@ -2,6 +2,8 @@
 export interface ServantIndexEntry {
   id: number
   name: string
+  /** JP data only: the Japanese name (names are English). */
+  originalName?: string
   className: string
   attribute: string
   rarity: number
@@ -16,6 +18,8 @@ export interface ServantIndexEntry {
 export interface MaterialIndexEntry {
   id: number
   name: string
+  /** JP data only: the Japanese name. */
+  originalName?: string
   icon: string
   /** From the quoted first line of the Atlas detail, e.g. "Skill Up & Ascension Material". */
   category: string
@@ -61,10 +65,13 @@ export interface FreeQuestIndexEntry {
   questId: number
   phase: number
   name: string
+  /** JP data only: Japanese quest and location names. */
+  originalName?: string
   warId: number
   warName: string
   spotId: number
   spotName: string
+  spotOriginalName?: string
   /** Location's quest-map icon; null for region-wide spots (e.g. Ordeal Call areas). */
   spotImage: string | null
   apCost: number | null

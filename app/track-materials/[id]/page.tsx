@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import Link from "next/link"
+import { RegionLink as Link } from "@/components/RegionLink"
 import { useEffect, useMemo, useState } from "react"
 import { useParams } from "next/navigation"
 import { ArrowLeft } from "lucide-react"

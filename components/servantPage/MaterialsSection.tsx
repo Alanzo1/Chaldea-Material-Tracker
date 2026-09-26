@@ -1,6 +1,6 @@
 "use client"
 
-import Link from "next/link"
+import { RegionLink as Link } from "@/components/RegionLink"
 import Image from "next/image"
 
 import { Button } from "@/components/ui/button"

@@ -2,16 +2,7 @@ import { notFound } from "next/navigation"
 
 import { getServantsIndex } from "@/lib/atlas-data"
 import { FilteredServantTablePage } from "@/components/ServantTable/FilteredServantTablePage"
-
-const VALID_FILTERS = new Set(["trait", "alignment", "attribute"])
-
-function normalizeValue(value: string) {
-  return decodeURIComponent(value).toLowerCase()
-}
-
-function formatLabel(value: string) {
-  return decodeURIComponent(value)
-}
+import { filterServantsByRoute } from "@/lib/servant-filter-route"
 
 interface FilterPageProps {
   params: Promise<{
@@ -22,42 +13,8 @@ interface FilterPageProps {
 
 export default async function FilterPage({ params }: FilterPageProps) {
   const { filterType, filterValue } = await params
+  const result = filterServantsByRoute(getServantsIndex(), filterType, filterValue)
+  if (!result) notFound()
 
-  if (!VALID_FILTERS.has(filterType)) {
-    notFound()
-  }
-
-  const servants = getServantsIndex()
-  const normalizedValue = normalizeValue(filterValue)
-
-  const filteredServants = servants.filter((servant: any) => {
-    if (filterType === "trait") {
-      return (servant.traits ?? []).some(
-        (trait: string) => String(trait).toLowerCase() === normalizedValue
-      )
-    }
-
-    if (filterType === "alignment") {
-      return (servant.alignments ?? []).some(
-        (alignment: string) => String(alignment).toLowerCase() === normalizedValue
-      )
-    }
-
-    return String(servant.attribute ?? "").toLowerCase() === normalizedValue
-  })
-
-  const titlePrefix =
-    filterType === "trait"
-      ? "Trait"
-      : filterType === "alignment"
-        ? "Alignment"
-        : "Attribute"
-
-  return (
-    <FilteredServantTablePage
-      title={`${titlePrefix}: ${formatLabel(filterValue)}`}
-      count={filteredServants.length}
-      data={filteredServants}
-    />
-  )
+  return <FilteredServantTablePage title={result.title} count={result.servants.length} data={result.servants} />
 }

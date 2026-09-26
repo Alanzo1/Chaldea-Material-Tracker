@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import Link from "next/link"
+import { RegionLink as Link } from "@/components/RegionLink"
 import { CheckCircle2, PlusCircle, X } from "lucide-react"
 
 import {

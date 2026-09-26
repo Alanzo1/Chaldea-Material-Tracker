@@ -23,9 +23,12 @@ export function MaterialDetail({ material }: { material: MaterialIndexEntry }) {
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <header className="space-y-2">
-        <h1 className="font-serif text-4xl font-bold italic tracking-tight text-foreground sm:text-5xl">
-          {material.name}
-        </h1>
+        <div>
+          <h1 className="font-serif text-4xl font-bold italic tracking-tight text-foreground sm:text-5xl">
+            {material.name}
+          </h1>
+          {material.originalName ? <p lang="ja" className="mt-1 text-sm text-muted-foreground">{material.originalName}</p> : null}
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-base text-foreground/85">{material.category}</span>
           {material.background ? (

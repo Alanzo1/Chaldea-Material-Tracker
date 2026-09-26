@@ -7,7 +7,7 @@ import { useEffect, useState } from "react"
 // ~0.4–1.7 MB of duplicated JSON and each deployment ~1.8 GB.
 const cache = new Map<string, Promise<unknown>>()
 
-function load(url: string): Promise<unknown> {
+export function loadStaticJson(url: string): Promise<unknown> {
   let pending = cache.get(url)
   if (!pending) {
     pending = fetch(url).then((response) => {
@@ -24,21 +24,22 @@ function load(url: string): Promise<unknown> {
 export type StaticJsonStatus = "loading" | "ready" | "error"
 
 export function useStaticJson<T>(url: string, fallback: T): { data: T; status: StaticJsonStatus } {
-  const [state, setState] = useState<{ data: T; status: StaticJsonStatus }>({ data: fallback, status: "loading" })
+  const [state, setState] = useState<{ url: string; data: T; status: StaticJsonStatus }>({ url, data: fallback, status: "loading" })
 
   useEffect(() => {
     let cancelled = false
-    load(url)
+    loadStaticJson(url)
       .then((data) => {
-        if (!cancelled) setState({ data: data as T, status: "ready" })
+        if (!cancelled) setState({ url, data: data as T, status: "ready" })
       })
       .catch(() => {
-        if (!cancelled) setState((current) => ({ ...current, status: "error" }))
+        if (!cancelled) setState({ url, data: fallback, status: "error" })
       })
     return () => {
       cancelled = true
     }
-  }, [url])
+  }, [url, fallback])
 
-  return state
+  // After the URL changes (e.g. NA → JP), never show the previous URL's data while loading.
+  return state.url === url ? { data: state.data, status: state.status } : { data: fallback, status: "loading" as const }
 }
